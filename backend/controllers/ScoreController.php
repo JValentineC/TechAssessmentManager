@@ -12,25 +12,47 @@ class ScoreController {
     }
 
     public function create() {
-        $user = $this->auth->requireRole(['admin', 'facilitator']);
+        $currentUser = $this->auth->requireRole(['admin', 'facilitator']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $required = ['submission_id', 'rubric_score'];
         foreach ($required as $field) {
             if (!isset($input[$field])) {
                 http_response_code(400);
-                echo json_encode(['error' => "$field is required"]);
+                echo json_encode(['success' => false, 'error' => "$field is required"]);
                 return;
             }
         }
 
         if ($input['rubric_score'] < 1 || $input['rubric_score'] > 5) {
             http_response_code(400);
-            echo json_encode(['error' => 'Score must be between 1 and 5']);
+            echo json_encode(['success' => false, 'error' => 'Score must be between 1 and 5']);
             return;
         }
 
         try {
+            $this->db->beginTransaction();
+
+            // Check if submission exists and is scoreable
+            $stmt = $this->db->prepare("
+                SELECT id, status FROM submissions WHERE id = ?
+            ");
+            $stmt->execute([$input['submission_id']]);
+            $submission = $stmt->fetch();
+
+            if (!$submission) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Submission not found']);
+                return;
+            }
+
+            if ($submission['status'] === 'in_progress') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Cannot score in-progress submission']);
+                return;
+            }
+
+            // Save or update score
             $stmt = $this->db->prepare("
                 INSERT INTO scores (submission_id, rubric_score, comments, scored_by)
                 VALUES (?, ?, ?, ?)
@@ -44,19 +66,44 @@ class ScoreController {
                 $input['submission_id'],
                 $input['rubric_score'],
                 $input['comments'] ?? null,
-                $user['id']
+                $currentUser['id']
             ]);
 
-            $scoreId = $this->db->lastInsertId();
+            $scoreId = $this->db->lastInsertId() ?: $this->db->prepare("SELECT id FROM scores WHERE submission_id = ?")->execute([$input['submission_id']]);
+
+            // Audit log
+            $stmt = $this->db->prepare("
+                INSERT INTO audit_logs (actor_user_id, action, entity, entity_id, metadata_json, ip_address)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $currentUser['id'],
+                'score_submission',
+                'scores',
+                $input['submission_id'],
+                json_encode(['rubric_score' => $input['rubric_score'], 'has_comments' => !empty($input['comments'])]),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+
+            $this->db->commit();
             
-            $stmt = $this->db->prepare("SELECT * FROM scores WHERE submission_id = ?");
+            // Return updated score
+            $stmt = $this->db->prepare("
+                SELECT sc.*, u.name as scorer_name
+                FROM scores sc
+                JOIN users u ON sc.scored_by = u.id
+                WHERE sc.submission_id = ?
+            ");
             $stmt->execute([$input['submission_id']]);
             $score = $stmt->fetch();
 
-            echo json_encode($score);
+            echo json_encode(['success' => true, 'data' => $score]);
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 

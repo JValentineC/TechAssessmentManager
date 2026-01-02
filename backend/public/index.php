@@ -112,6 +112,7 @@ $routes = [
     // Submission routes
     ['POST', 'submissions/start', 'SubmissionController@start'],
     ['GET', 'submissions', 'SubmissionController@index'],
+    ['GET', 'submissions/(\d+)', 'SubmissionController@show'],
     ['PATCH', 'submissions/(\d+)', 'SubmissionController@update'],
     ['POST', 'submissions/(\d+)/timeout', 'SubmissionController@timeout'],
 

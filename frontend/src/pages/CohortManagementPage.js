@@ -86,6 +86,7 @@ const CohortManagementPage = () => {
 
   const handleRemoveMember = async (userId) => {
     if (
+      // eslint-disable-next-line no-restricted-globals
       !confirm("Are you sure you want to remove this member from the cohort?")
     )
       return;

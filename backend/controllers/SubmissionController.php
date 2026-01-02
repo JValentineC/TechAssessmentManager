@@ -280,6 +280,80 @@ class SubmissionController {
     }
 
     /**
+     * GET /submissions/:id
+     * Get single submission with full details for scoring
+     */
+    public function show($id) {
+        $user = $this->auth->requireAuth();
+
+        try {
+            $sql = "
+                SELECT 
+                    s.*,
+                    u.id as user_id,
+                    u.name as user_name,
+                    u.email as user_email,
+                    a.code as assessment_code,
+                    a.title as assessment_title,
+                    a.description as assessment_description,
+                    a.duration_minutes,
+                    t.id as task_id,
+                    t.title as task_title,
+                    t.instructions as task_instructions,
+                    t.max_points,
+                    c.name as cohort_name,
+                    sc.id as score_id,
+                    sc.rubric_score,
+                    sc.comments as score_comments,
+                    sc.scored_by,
+                    sc.scored_at,
+                    scorer.name as scorer_name
+                FROM submissions s
+                JOIN users u ON s.user_id = u.id
+                JOIN assessments a ON s.assessment_id = a.id
+                JOIN tasks t ON s.task_id = t.id
+                JOIN cohorts c ON s.cohort_id = c.id
+                LEFT JOIN scores sc ON s.id = sc.submission_id
+                LEFT JOIN users scorer ON sc.scored_by = scorer.id
+                WHERE s.id = ?
+            ";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$id]);
+            $submission = $stmt->fetch();
+
+            if (!$submission) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Submission not found']);
+                return;
+            }
+
+            // Interns can only view their own
+            if ($user['role'] === 'intern' && $submission['user_id'] != $user['id']) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Forbidden']);
+                return;
+            }
+
+            // Get snapshots for this submission
+            $stmt = $this->db->prepare("
+                SELECT id, image_path, captured_at
+                FROM snapshots
+                WHERE user_id = ? AND assessment_id = ? AND cohort_id = ?
+                ORDER BY captured_at DESC
+                LIMIT 10
+            ");
+            $stmt->execute([$submission['user_id'], $submission['assessment_id'], $submission['cohort_id']]);
+            $submission['snapshots'] = $stmt->fetchAll();
+
+            echo json_encode(['success' => true, 'data' => $submission]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * PATCH /submissions/:id
      * Update submission (file upload, status, reflection)
      */
@@ -358,38 +432,115 @@ class SubmissionController {
 
     /**
      * POST /submissions/:id/timeout
+     * Server-side enforcement of timer expiration - locks attempt and finalizes submission
      */
     public function timeout($id) {
         $user = $this->auth->requireAuth();
 
         try {
-            $stmt = $this->db->prepare("SELECT * FROM submissions WHERE id = ?");
+            $this->db->beginTransaction();
+
+            // Get submission with lock
+            $stmt = $this->db->prepare("
+                SELECT s.*, a.duration_minutes, a.title as assessment_title
+                FROM submissions s
+                JOIN assessments a ON s.assessment_id = a.id
+                WHERE s.id = ?
+                FOR UPDATE
+            ");
             $stmt->execute([$id]);
             $submission = $stmt->fetch();
 
             if (!$submission) {
                 http_response_code(404);
-                echo json_encode(['error' => 'Submission not found']);
+                echo json_encode(['success' => false, 'error' => 'Submission not found']);
                 return;
             }
 
+            // Verify ownership
             if ($user['role'] === 'intern' && $submission['user_id'] != $user['id']) {
                 http_response_code(403);
-                echo json_encode(['error' => 'Forbidden']);
+                echo json_encode(['success' => false, 'error' => 'Forbidden']);
                 return;
             }
 
+            // Only timeout if still in progress
+            if ($submission['status'] !== 'in_progress') {
+                echo json_encode([
+                    'success' => false, 
+                    'error' => 'Submission already finalized',
+                    'status' => $submission['status']
+                ]);
+                return;
+            }
+
+            // Verify timeout is legitimate (server-side validation)
+            $startTime = strtotime($submission['started_at']);
+            $allowedDuration = ($submission['duration_minutes'] * 60) + 30; // 30 second grace period
+            $elapsed = time() - $startTime;
+
+            if ($elapsed < ($submission['duration_minutes'] * 60)) {
+                // Too early - still within normal time
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Timer has not expired yet',
+                    'elapsed' => $elapsed,
+                    'required' => $submission['duration_minutes'] * 60
+                ]);
+                return;
+            }
+
+            // Finalize as timed_out
             $stmt = $this->db->prepare("
                 UPDATE submissions 
                 SET status = 'timed_out', submitted_at = NOW()
-                WHERE id = ? AND status = 'in_progress'
+                WHERE id = ?
             ");
             $stmt->execute([$id]);
 
-            echo json_encode(['message' => 'Submission timed out']);
+            // Audit log
+            $stmt = $this->db->prepare("
+                INSERT INTO audit_logs (actor_user_id, action, entity, entity_id, metadata_json, ip_address)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $user['id'],
+                'auto_submit_timeout',
+                'submissions',
+                $id,
+                json_encode([
+                    'assessment' => $submission['assessment_title'],
+                    'elapsed_minutes' => round($elapsed / 60, 2),
+                    'duration_minutes' => $submission['duration_minutes']
+                ]),
+                $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+
+            $this->db->commit();
+
+            // Return updated submission
+            $stmt = $this->db->prepare("
+                SELECT s.*, u.name as user_name, a.title as assessment_title
+                FROM submissions s
+                JOIN users u ON s.user_id = u.id
+                JOIN assessments a ON s.assessment_id = a.id
+                WHERE s.id = ?
+            ");
+            $stmt->execute([$id]);
+            $updated = $stmt->fetch();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Submission auto-submitted due to timeout',
+                'data' => $updated
+            ]);
         } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 
