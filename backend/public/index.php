@@ -83,6 +83,8 @@ $routes = [
     ['PATCH', 'cohorts/(\d+)', 'CohortController@update'],
     ['GET', 'cohorts/(\d+)/roster', 'CohortController@roster'],
     ['POST', 'cohorts/(\d+)/import', 'CohortController@import'],
+    ['POST', 'cohorts/(\d+)/members', 'CohortController@addMember'],
+    ['DELETE', 'cohorts/(\d+)/members/(\d+)', 'CohortController@removeMember'],
 
     // User routes
     ['GET', 'users', 'UserController@index'],

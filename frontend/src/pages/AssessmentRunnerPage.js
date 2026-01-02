@@ -262,6 +262,7 @@ const AssessmentRunnerPage = () => {
                 Upload Your Solution
               </h3>
               <FileUpload
+                key={currentTask.id}
                 taskId={currentTask.id}
                 onUpload={handleFileUpload}
                 acceptedTypes={[

@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useCohort } from '../context/CohortContext';
-import { scoreService, submissionService } from '../services';
-import { FaUsers, FaClipboardCheck, FaClock, FaChartLine } from 'react-icons/fa';
-import CohortSelector from '../components/CohortSelector';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useCohort } from "../context/CohortContext";
+import { scoreService, submissionService } from "../services";
+import {
+  FaUsers,
+  FaClipboardCheck,
+  FaClock,
+  FaChartLine,
+} from "react-icons/fa";
+import CohortSelector from "../components/CohortSelector";
 
 const DashboardPage = () => {
   const { user, isFacilitator, isIntern } = useAuth();
@@ -20,34 +25,70 @@ const DashboardPage = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       if (isFacilitator()) {
-        const [summary, submissions] = await Promise.all([
+        const [summary, submissionsRes] = await Promise.all([
           scoreService.getSummary(selectedCohort.id),
-          submissionService.getSubmissions(selectedCohort.id)
+          submissionService.getSubmissions(selectedCohort.id),
         ]);
+
+        const submissions = Array.isArray(submissionsRes)
+          ? submissionsRes
+          : submissionsRes.data || [];
 
         setStats({
           totalInterns: summary.total_interns || 0,
-          completedAssessments: submissions.filter(s => s.status === 'submitted').length,
-          inProgress: submissions.filter(s => s.status === 'in_progress').length,
+          completedAssessments: submissions.filter(
+            (s) =>
+              s.status === "submitted" ||
+              s.status === "timed_out" ||
+              s.rubric_score
+          ).length,
+          inProgress: submissions.filter((s) => s.status === "in_progress")
+            .length,
           averageProficiency: summary.average_proficiency || 0,
-          submissions: submissions.slice(0, 5) // Recent 5
+          submissions: submissions.slice(0, 10).map((s) => ({
+            ...s,
+            // Normalize status display
+            display_status: s.rubric_score
+              ? "scored"
+              : s.status === "timed_out"
+              ? "completed (auto)"
+              : s.status === "submitted"
+              ? "completed"
+              : s.status,
+          })),
         });
       } else if (isIntern()) {
-        const submissions = await submissionService.getSubmissions(
+        const submissionsRes = await submissionService.getSubmissions(
           selectedCohort.id
         );
-        const userSubmissions = submissions.filter(s => s.user_id === user.id);
+        const submissions = Array.isArray(submissionsRes)
+          ? submissionsRes
+          : submissionsRes.data || [];
+        const userSubmissions = submissions.filter(
+          (s) => s.user_id === user.id
+        );
 
         setStats({
-          completedAssessments: userSubmissions.filter(s => s.status === 'submitted').length,
-          inProgress: userSubmissions.filter(s => s.status === 'in_progress').length,
-          submissions: userSubmissions
+          completedAssessments: userSubmissions.filter(
+            (s) => s.status === "submitted" || s.status === "timed_out"
+          ).length,
+          inProgress: userSubmissions.filter((s) => s.status === "in_progress")
+            .length,
+          submissions: userSubmissions.map((s) => ({
+            ...s,
+            display_status:
+              s.status === "timed_out"
+                ? "completed (auto)"
+                : s.status === "submitted"
+                ? "completed"
+                : s.status,
+          })),
         });
       }
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
     }
@@ -67,9 +108,7 @@ const DashboardPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Welcome back, {user?.name}!
-          </p>
+          <p className="text-gray-600 mt-1">Welcome back, {user?.name}!</p>
         </div>
         {isFacilitator() && <CohortSelector />}
       </div>
@@ -83,7 +122,9 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm">Total Interns</p>
-                  <p className="text-3xl font-bold mt-1">{stats.totalInterns}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.totalInterns}
+                  </p>
                 </div>
                 <FaUsers className="text-4xl text-blue-200" />
               </div>
@@ -93,7 +134,9 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm">Completed</p>
-                  <p className="text-3xl font-bold mt-1">{stats.completedAssessments}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.completedAssessments}
+                  </p>
                 </div>
                 <FaClipboardCheck className="text-4xl text-green-200" />
               </div>
@@ -148,30 +191,33 @@ const DashboardPage = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {stats.submissions.map((sub) => (
-                      <tr key={sub.id}>
+                      <tr key={sub.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {sub.user_name}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
-                          Assessment {sub.assessment_code}
+                          {sub.assessment_title ||
+                            `Assessment ${sub.assessment_code}`}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span
-                            className={`badge ${
-                              sub.status === 'submitted'
-                                ? 'badge-success'
-                                : sub.status === 'in_progress'
-                                ? 'badge-warning'
-                                : 'badge-danger'
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              sub.rubric_score ||
+                              sub.status === "submitted" ||
+                              sub.status === "timed_out"
+                                ? "bg-green-100 text-green-800"
+                                : sub.status === "in_progress"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {sub.status}
+                            {sub.display_status || sub.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600">
                           {sub.submitted_at
                             ? new Date(sub.submitted_at).toLocaleString()
-                            : '-'}
+                            : "In progress"}
                         </td>
                       </tr>
                     ))}
@@ -195,7 +241,9 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm">Completed</p>
-                  <p className="text-3xl font-bold mt-1">{stats.completedAssessments}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.completedAssessments}
+                  </p>
                 </div>
                 <FaClipboardCheck className="text-4xl text-blue-200" />
               </div>
@@ -215,7 +263,9 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm">Cohort</p>
-                  <p className="text-2xl font-bold mt-1">Cycle {selectedCohort?.cycle_number}</p>
+                  <p className="text-2xl font-bold mt-1">
+                    Cycle {selectedCohort?.cycle_number}
+                  </p>
                 </div>
                 <FaUsers className="text-4xl text-green-200" />
               </div>

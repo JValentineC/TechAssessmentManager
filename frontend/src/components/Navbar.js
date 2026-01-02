@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useCohort } from '../context/CohortContext';
-import { FaBars, FaTimes, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useCohort } from "../context/CohortContext";
+import { FaBars, FaTimes, FaUser, FaSignOutAlt } from "react-icons/fa";
 
 const Navbar = () => {
-  const { user, logout, isFacilitator, isIntern } = useAuth();
+  const { user, logout, isAdmin, isFacilitator, isIntern } = useAuth();
   const { selectedCohort, cohorts, selectCohort } = useCohort();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -13,12 +13,12 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleCohortChange = (e) => {
     const cohortId = parseInt(e.target.value);
-    const cohort = cohorts.find(c => c.id === cohortId);
+    const cohort = cohorts.find((c) => c.id === cohortId);
     if (cohort) {
       selectCohort(cohort);
     }
@@ -45,13 +45,28 @@ const Navbar = () => {
               Dashboard
             </Link>
 
-            {isFacilitator() && (
+            {isAdmin() && (
+              <Link
+                to="/users"
+                className="hover:text-icstars-gold transition-colors"
+              >
+                Users
+              </Link>
+            )}
+
+            {(isAdmin() || isFacilitator()) && (
               <>
                 <Link
                   to="/cohorts"
                   className="hover:text-icstars-gold transition-colors"
                 >
                   Cohorts
+                </Link>
+                <Link
+                  to="/submissions"
+                  className="hover:text-icstars-gold transition-colors"
+                >
+                  Submissions
                 </Link>
                 <Link
                   to="/access-control"
@@ -86,7 +101,7 @@ const Navbar = () => {
             {/* Cohort Selector (for facilitators) */}
             {isFacilitator() && cohorts.length > 0 && (
               <select
-                value={selectedCohort?.id || ''}
+                value={selectedCohort?.id || ""}
                 onChange={handleCohortChange}
                 className="bg-blue-700 text-white px-3 py-1 rounded border border-blue-600 focus:outline-none focus:ring-2 focus:ring-icstars-gold"
               >
@@ -179,7 +194,7 @@ const Navbar = () => {
 
                 {cohorts.length > 0 && (
                   <select
-                    value={selectedCohort?.id || ''}
+                    value={selectedCohort?.id || ""}
                     onChange={handleCohortChange}
                     className="w-full bg-blue-700 text-white px-3 py-2 rounded border border-blue-600"
                   >

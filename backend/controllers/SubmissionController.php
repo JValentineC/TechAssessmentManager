@@ -157,51 +157,125 @@ class SubmissionController {
     }
 
     /**
-     * GET /submissions?cohort_id=X&assessment_id=Y
+     * GET /submissions?cohort_id=X&assessment_id=Y&user_id=Z&status=W&from_date=...&to_date=...
      */
     public function index() {
         $user = $this->auth->requireAuth();
         
+        // Parse query parameters
         $cohortId = $_GET['cohort_id'] ?? null;
         $assessmentId = $_GET['assessment_id'] ?? null;
+        $userId = $_GET['user_id'] ?? null;
+        $status = $_GET['status'] ?? null;
+        $fromDate = $_GET['from_date'] ?? null;
+        $toDate = $_GET['to_date'] ?? null;
+        $page = max(1, intval($_GET['page'] ?? 1));
+        $limit = min(100, max(10, intval($_GET['limit'] ?? 50)));
+        $offset = ($page - 1) * $limit;
+        $sortBy = $_GET['sort_by'] ?? 'submitted_at';
+        $sortDir = strtoupper($_GET['sort_dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
 
         try {
-            $sql = "
-                SELECT s.*, u.name as user_name, a.code as assessment_code, t.title as task_title
-                FROM submissions s
-                JOIN users u ON s.user_id = u.id
-                JOIN assessments a ON s.assessment_id = a.id
-                JOIN tasks t ON s.task_id = t.id
-                WHERE 1=1
-            ";
+            // Build WHERE clauses
+            $where = ['1=1'];
             $params = [];
 
             if ($cohortId) {
-                $sql .= " AND s.cohort_id = ?";
+                $where[] = "s.cohort_id = ?";
                 $params[] = $cohortId;
             }
 
             if ($assessmentId) {
-                $sql .= " AND s.assessment_id = ?";
+                $where[] = "s.assessment_id = ?";
                 $params[] = $assessmentId;
+            }
+
+            if ($userId) {
+                $where[] = "s.user_id = ?";
+                $params[] = $userId;
+            }
+
+            if ($status) {
+                $where[] = "s.status = ?";
+                $params[] = $status;
+            }
+
+            if ($fromDate) {
+                $where[] = "s.submitted_at >= ?";
+                $params[] = $fromDate;
+            }
+
+            if ($toDate) {
+                $where[] = "s.submitted_at <= ?";
+                $params[] = $toDate;
             }
 
             // Interns can only see their own
             if ($user['role'] === 'intern') {
-                $sql .= " AND s.user_id = ?";
+                $where[] = "s.user_id = ?";
                 $params[] = $user['id'];
             }
 
-            $sql .= " ORDER BY s.created_at DESC";
+            $whereClause = implode(' AND ', $where);
 
+            // Validate sort column
+            $allowedSortCols = ['submitted_at', 'started_at', 'status', 'user_name', 'assessment_code'];
+            if (!in_array($sortBy, $allowedSortCols)) {
+                $sortBy = 'submitted_at';
+            }
+
+            // Get total count
+            $countStmt = $this->db->prepare("
+                SELECT COUNT(*) as total
+                FROM submissions s
+                WHERE $whereClause
+            ");
+            $countStmt->execute($params);
+            $total = $countStmt->fetch()['total'];
+
+            // Get submissions
+            $sql = "
+                SELECT 
+                    s.*,
+                    u.name as user_name,
+                    u.email as user_email,
+                    a.code as assessment_code,
+                    a.title as assessment_title,
+                    t.title as task_title,
+                    c.name as cohort_name,
+                    sc.id as score_id,
+                    sc.rubric_score,
+                    sc.scored_by,
+                    scorer.name as scorer_name
+                FROM submissions s
+                JOIN users u ON s.user_id = u.id
+                JOIN assessments a ON s.assessment_id = a.id
+                JOIN tasks t ON s.task_id = t.id
+                JOIN cohorts c ON s.cohort_id = c.id
+                LEFT JOIN scores sc ON s.id = sc.submission_id
+                LEFT JOIN users scorer ON sc.scored_by = scorer.id
+                WHERE $whereClause
+                ORDER BY s.$sortBy $sortDir
+                LIMIT ? OFFSET ?
+            ";
+            
             $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
+            $stmt->execute([...$params, $limit, $offset]);
             $submissions = $stmt->fetchAll();
 
-            echo json_encode($submissions);
+            echo json_encode([
+                'success' => true,
+                'data' => $submissions,
+                'pagination' => [
+                    'total' => intval($total),
+                    'page' => $page,
+                    'limit' => $limit,
+                    'pages' => ceil($total / $limit)
+                ]
+            ]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 
