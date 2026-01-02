@@ -27,7 +27,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "deploy": "npm run build && node ../deploy-update.js",
+    "deploy:quick": "node ../deploy-update.js --skip-build",
+    "deploy:backend": "node ../deploy-update.js --backend-only",
+    "deploy:frontend": "node ../deploy-update.js --frontend-only"
   },
   "eslintConfig": {
     "extends": [
