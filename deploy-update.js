@@ -128,7 +128,7 @@ function deploy() {
 
     // Fix permissions on server
     log('\n🔧 Setting correct permissions...', c.cyan);
-    run(`ssh ${NFSN_SERVER} "chmod 644 /home/public/*.html /home/public/*.json; chmod 755 /home/public/static /home/public/static/css /home/public/static/js; chmod 644 /home/public/static/css/* /home/public/static/js/*"`, 'Fix Permissions');
+    run(`ssh ${NFSN_SERVER} "chmod 755 /home/public; chmod 644 /home/public/*.html /home/public/*.json; chmod 755 /home/public/static /home/public/static/css /home/public/static/js; chmod 644 /home/public/static/css/* /home/public/static/js/*"`, 'Fix Permissions');
   }
 
   // Done!
