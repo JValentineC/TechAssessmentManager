@@ -13,30 +13,7 @@ A comprehensive web application for timed, proctored technical assessments with 
 - **Access Overrides**: Per-user makeup exam scheduling
 - **Reports & Exports**: Cohort-filtered dashboards and CSV/PDF exports
 
-## Tech Stack
-
-### Frontend
-
-- React 18 with Hooks
-- React Router for navigation
-- TailwindCSS for styling
-- Axios for API calls
-- Context API for state management
-
-### Backend
-
-- PHP 8+ with PDO (MySQL)
-- JWT authentication
-- RESTful API
-- File upload handling
-- CORS support
-
-### Database
-
-- MySQL 8+
-- Comprehensive schema with 11 tables
-- Foreign key constraints
-- Audit logging
+##
 
 ## Project Structure
 

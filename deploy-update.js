@@ -20,7 +20,6 @@ const NFSN_USER = 'jvc_assessmentmanager';
 const NFSN_HOST = 'ssh.nyc1.nearlyfreespeech.net';
 const NFSN_SERVER = `${NFSN_USER}@${NFSN_HOST}`;
 const REMOTE_PATH = '/home/public';
-const NFSN_SERVER = `${NFSN_USER}@${NFSN_HOST}`;
 
 // Parse arguments
 const args = process.argv.slice(2);
@@ -108,10 +107,17 @@ function deploy() {
       process.exit(1);
     }
 
-    const cmd = `scp -r "${buildPath}\\*" ${NFSN_SERVER}:/home/public/`;
-    
-    if (!run(cmd, 'Frontend Upload')) {
-      process.exit(1);
+    // Upload root files (index.html, manifest.json, etc.)
+    const rootFiles = ['index.html', 'manifest.json', 'asset-manifest.json'].map(f => path.join(buildPath, f)).filter(f => fs.existsSync(f));
+    if (rootFiles.length > 0) {
+      const filesStr = rootFiles.map(f => `"${f}"`).join(' ');
+      run(`scp ${filesStr} ${NFSN_SERVER}:/home/public/`, 'Upload Root Files');
+    }
+
+    // Upload static folder (critical for CSS/JS)
+    const staticPath = path.join(buildPath, 'static');
+    if (fs.existsSync(staticPath)) {
+      run(`scp -r "${staticPath}" ${NFSN_SERVER}:/home/public/`, 'Upload Static Folder');
     }
 
     // Upload .htaccess
@@ -119,6 +125,10 @@ function deploy() {
     if (fs.existsSync(htaccess)) {
       run(`scp "${htaccess}" ${NFSN_SERVER}:/home/public/`, 'Upload .htaccess');
     }
+
+    // Fix permissions on server
+    log('\n🔧 Setting correct permissions...', c.cyan);
+    run(`ssh ${NFSN_SERVER} "chmod 644 /home/public/*.html /home/public/*.json; chmod 755 /home/public/static /home/public/static/css /home/public/static/js; chmod 644 /home/public/static/css/* /home/public/static/js/*"`, 'Fix Permissions');
   }
 
   // Done!
