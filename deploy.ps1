@@ -1,9 +1,10 @@
 # Deployment Script for NearlyFreeSpeech.net
-# Usage: .\deploy.ps1 -server "username@ssh.nearlyfreespeech.net"
+# Usage: .\deploy.ps1 [-skipBuild]
+# Configured for: jvc_assessmentmanager@ssh.nyc1.nearlyfreespeech.net
 
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$server,
+    [Parameter(Mandatory=$false)]
+    [string]$server = "jvc_assessmentmanager@ssh.nyc1.nearlyfreespeech.net",
     
     [Parameter(Mandatory=$false)]
     [switch]$skipBuild

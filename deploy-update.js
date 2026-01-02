@@ -16,8 +16,10 @@ const fs = require('fs');
 const path = require('path');
 
 // NFSN Configuration
-const NFSN_USER = 'assessmentmanager';
-const NFSN_HOST = 'ssh.nearlyfreespeech.net';
+const NFSN_USER = 'jvc_assessmentmanager';
+const NFSN_HOST = 'ssh.nyc1.nearlyfreespeech.net';
+const NFSN_SERVER = `${NFSN_USER}@${NFSN_HOST}`;
+const REMOTE_PATH = '/home/public';
 const NFSN_SERVER = `${NFSN_USER}@${NFSN_HOST}`;
 
 // Parse arguments
