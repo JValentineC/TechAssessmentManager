@@ -95,6 +95,10 @@ function deploy() {
       log(`   ssh ${NFSN_SERVER}`, c.cyan);
       process.exit(1);
     }
+
+    // Fix backend permissions
+    log('\n🔧 Setting backend permissions...', c.cyan);
+    run(`ssh ${NFSN_SERVER} "chmod 755 /home/public/api /home/public/api/config /home/public/api/controllers /home/public/api/middleware /home/public/api/migrations /home/public/api/public && chmod 644 /home/public/api/config/*.php /home/public/api/controllers/*.php /home/public/api/middleware/*.php /home/public/api/migrations/*.sql /home/public/api/public/index.php && chmod 600 /home/public/api/.env"`, 'Fix Backend Permissions');
   }
 
   // Step 3: Deploy frontend
