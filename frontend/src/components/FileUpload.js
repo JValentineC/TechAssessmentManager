@@ -30,10 +30,14 @@ const FileUpload = ({
     maxSize: maxSizeMB * 1024 * 1024,
     multiple: false,
     onDrop: async (acceptedFiles, rejectedFiles) => {
+      console.log("🎯 FileUpload onDrop triggered");
+      console.log("📁 Accepted files:", acceptedFiles);
+      console.log("❌ Rejected files:", rejectedFiles);
       setError(null);
 
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
+        console.log("🚫 File rejected:", rejection.errors);
         if (rejection.errors[0].code === "file-too-large") {
           setError(`File is too large. Maximum size is ${maxSizeMB}MB.`);
         } else if (rejection.errors[0].code === "file-invalid-type") {
@@ -48,18 +52,24 @@ const FileUpload = ({
 
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
+        console.log("✅ File accepted, starting upload:", file.name);
         setUploading(true);
 
         try {
+          console.log("🚀 Calling onUpload with taskId:", taskId);
           await onUpload(taskId, file);
+          console.log("✅ onUpload completed successfully");
           setUploadedFile(file);
           setError(null);
         } catch (err) {
+          console.error("❌ onUpload failed:", err);
           setError(err.message || "Upload failed. Please try again.");
           setUploadedFile(null);
         } finally {
           setUploading(false);
         }
+      } else {
+        console.log("⚠️ No accepted files");
       }
     },
   });

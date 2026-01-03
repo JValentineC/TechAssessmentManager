@@ -1,5 +1,5 @@
-# Enable PHP 8
-AddHandler php80-cgi .php
+# Enable PHP
+AddType application/x-httpd-php .php
 
 # API Routing
 RewriteEngine On

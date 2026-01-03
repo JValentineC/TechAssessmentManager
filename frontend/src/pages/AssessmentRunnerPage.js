@@ -17,6 +17,7 @@ const AssessmentRunnerPage = () => {
   const [assessment, setAssessment] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [submissions, setSubmissions] = useState({});
+  const [textInputs, setTextInputs] = useState({});
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [startTime, setStartTime] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,20 +98,69 @@ const AssessmentRunnerPage = () => {
 
   const handleFileUpload = async (taskId, file) => {
     const submission = submissions[taskId];
+    console.log(
+      "🔵 Starting file upload for task:",
+      taskId,
+      "submission:",
+      submission.id
+    );
+    console.log("📎 File details:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
     try {
-      await submissionService.uploadFile(submission.id, taskId, file);
+      const updatedSubmission = await submissionService.uploadFile(
+        submission.id,
+        taskId,
+        file
+      );
+      console.log("✅ Upload successful! Backend response:", updatedSubmission);
+      console.log("📊 Status updated to:", updatedSubmission.status);
 
       setSubmissions((prev) => ({
         ...prev,
         [taskId]: {
           ...prev[taskId],
-          status: "submitted",
+          ...updatedSubmission,
           file: file.name,
         },
       }));
+      console.log("✓ Local state updated");
     } catch (error) {
+      console.error("❌ Upload failed:", error);
+      console.error("❌ Error details:", error.response?.data);
       throw new Error(error.response?.data?.error || "Upload failed");
+    }
+  };
+
+  const handleTextSubmit = async (taskId) => {
+    const submission = submissions[taskId];
+    const text = textInputs[taskId] || "";
+
+    if (!text.trim()) {
+      alert("Please enter your answer before submitting.");
+      return;
+    }
+
+    try {
+      const updatedSubmission = await submissionService.submitText(
+        submission.id,
+        text
+      );
+
+      setSubmissions((prev) => ({
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          ...updatedSubmission,
+          submission_text: text,
+        },
+      }));
+    } catch (error) {
+      console.error("❌ Text submission failed:", error);
+      throw new Error(error.response?.data?.error || "Submission failed");
     }
   };
 
@@ -255,32 +305,96 @@ const AssessmentRunnerPage = () => {
             </div>
           )}
 
-          {/* File Upload */}
+          {/* Task Submission Area */}
           {currentTask?.max_points > 0 && (
             <div>
               <h3 className="font-semibold text-gray-800 mb-3">
-                Upload Your Solution
+                {currentTask.task_type === "text_input"
+                  ? "Enter Your Answer"
+                  : currentTask.task_type === "link"
+                  ? "Submit Link or Upload File"
+                  : "Upload Your Solution"}
               </h3>
-              <FileUpload
-                key={currentTask.id}
-                taskId={currentTask.id}
-                onUpload={handleFileUpload}
-                acceptedTypes={[
-                  ".txt",
-                  ".sql",
-                  ".md",
-                  ".pdf",
-                  ".png",
-                  ".jpg",
-                  ".jpeg",
-                ]}
-                maxSizeMB={10}
-              />
-              {currentSubmission?.file && (
-                <p className="text-sm text-green-600 mt-2">
-                  ✓ File uploaded: {currentSubmission.file}
-                </p>
-              )}
+
+              {currentSubmission?.status === "submitted" ? (
+                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center">
+                  <div className="text-green-600 text-5xl mb-2">✓</div>
+                  <h4 className="text-xl font-bold text-green-800 mb-2">
+                    Task Submitted Successfully!
+                  </h4>
+                  {currentSubmission.file && (
+                    <p className="text-green-700 mb-4">
+                      File: {currentSubmission.file}
+                    </p>
+                  )}
+                  {currentSubmission.submission_text && (
+                    <p className="text-green-700 mb-4 text-sm">Answer saved</p>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    You can resubmit to replace your submission, or move to the
+                    next task.
+                  </p>
+                </div>
+              ) : null}
+
+              <div
+                className={
+                  currentSubmission?.status === "submitted" ? "mt-4" : ""
+                }
+              >
+                {/* Text Input Type */}
+                {currentTask.task_type === "text_input" && (
+                  <div>
+                    <textarea
+                      value={
+                        textInputs[currentTask.id] ||
+                        currentSubmission?.submission_text ||
+                        ""
+                      }
+                      onChange={(e) =>
+                        setTextInputs((prev) => ({
+                          ...prev,
+                          [currentTask.id]: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-gray-300 rounded-lg p-3 min-h-[200px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter your answer here..."
+                    />
+                    <button
+                      onClick={() => handleTextSubmit(currentTask.id)}
+                      className="btn-primary mt-3"
+                      disabled={!textInputs[currentTask.id]?.trim()}
+                    >
+                      Submit Answer
+                    </button>
+                  </div>
+                )}
+
+                {/* File Upload Type (default and for link type which can be file or link) */}
+                {(currentTask.task_type === "file_upload" ||
+                  currentTask.task_type === "link" ||
+                  !currentTask.task_type) && (
+                  <FileUpload
+                    key={currentTask.id}
+                    taskId={currentTask.id}
+                    onUpload={handleFileUpload}
+                    acceptedTypes={
+                      currentTask.task_type === "link"
+                        ? [".pdf", ".doc", ".docx", ".txt", ".md"]
+                        : [
+                            ".txt",
+                            ".sql",
+                            ".md",
+                            ".pdf",
+                            ".png",
+                            ".jpg",
+                            ".jpeg",
+                          ]
+                    }
+                    maxSizeMB={10}
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>

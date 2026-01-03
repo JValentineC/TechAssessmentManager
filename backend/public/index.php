@@ -115,6 +115,9 @@ $routes = [
     ['GET', 'submissions/(\d+)', 'SubmissionController@show'],
     ['PATCH', 'submissions/(\d+)', 'SubmissionController@update'],
     ['POST', 'submissions/(\d+)/timeout', 'SubmissionController@timeout'],
+    
+    // File download route
+    ['GET', 'uploads/(.+)', 'SubmissionController@downloadFile'],
 
     // Score routes
     ['POST', 'scores', 'ScoreController@create'],

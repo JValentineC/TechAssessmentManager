@@ -62,6 +62,37 @@ const ScoringPage = () => {
     }
   };
 
+  const handleDownload = async (filename) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/uploads/${filename}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Failed to download file");
+    }
+  };
+
   const handleSaveScore = async (publish = false) => {
     if (score.rubric_score < 1 || score.rubric_score > 5) {
       setError("Please select a score between 1 and 5");
@@ -285,12 +316,58 @@ const ScoringPage = () => {
           {/* Task Instructions */}
           <div className="card">
             <h2 className="text-xl font-bold mb-4">Task Instructions</h2>
-            <div className="prose max-w-none">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+              <p className="text-sm font-semibold text-blue-800 mb-1">
+                Assessment Task
+              </p>
+              <p className="text-lg font-bold text-blue-900">
+                {submission.task_title}
+              </p>
+            </div>
+            <div className="prose max-w-none mb-4">
               <p className="text-gray-700 whitespace-pre-wrap">
                 {submission.task_instructions}
               </p>
             </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-yellow-800 mb-2">
+                📋 Rubric (Max Points: {submission.task_max_points || 5})
+              </p>
+              <ul className="text-sm text-gray-700 space-y-1">
+                <li>
+                  <strong>5 stars:</strong> Exceptional - Exceeds all
+                  requirements
+                </li>
+                <li>
+                  <strong>4 stars:</strong> Proficient - Meets all requirements
+                  well
+                </li>
+                <li>
+                  <strong>3 stars:</strong> Competent - Meets basic requirements
+                </li>
+                <li>
+                  <strong>2 stars:</strong> Developing - Partially meets
+                  requirements
+                </li>
+                <li>
+                  <strong>1 star:</strong> Beginning - Does not meet
+                  requirements
+                </li>
+              </ul>
+            </div>
           </div>
+
+          {/* Submitted Text Answer */}
+          {submission.submission_text && (
+            <div className="card">
+              <h2 className="text-xl font-bold mb-4">Submitted Answer</h2>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <pre className="text-gray-700 whitespace-pre-wrap font-sans">
+                  {submission.submission_text}
+                </pre>
+              </div>
+            </div>
+          )}
 
           {/* Submission File */}
           {submission.file_path && (
@@ -306,14 +383,12 @@ const ScoringPage = () => {
                     </p>
                   </div>
                 </div>
-                <a
-                  href={`${api.defaults.baseURL}/../${submission.file_path}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleDownload(submission.file_path)}
                   className="btn btn-secondary btn-sm"
                 >
                   Download
-                </a>
+                </button>
               </div>
             </div>
           )}

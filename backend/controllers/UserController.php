@@ -302,24 +302,4 @@ class UserController {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
-
-        try {
-            $values[] = $id;
-            $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute($values);
-
-            $stmt = $this->db->prepare("
-                SELECT id, name, email, role, current_cohort_id, status 
-                FROM users WHERE id = ?
-            ");
-            $stmt->execute([$id]);
-            $user = $stmt->fetch();
-
-            echo json_encode($user);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-    }
 }

@@ -8,6 +8,8 @@ import {
   FaStar,
   FaFileExport,
   FaClipboardList,
+  FaFileAlt,
+  FaSync,
 } from "react-icons/fa";
 
 const SubmissionsPage = () => {
@@ -21,7 +23,7 @@ const SubmissionsPage = () => {
     cohort_id: "",
     assessment_id: "",
     user_id: "",
-    status: "",
+    status: "", // Show all submissions by default
     from_date: "",
     to_date: "",
   });
@@ -79,6 +81,13 @@ const SubmissionsPage = () => {
       const response = await api.get(`/submissions?${params}`);
 
       if (response.data.success) {
+        console.log("Submissions loaded:", response.data.data);
+        console.log(
+          "Sample submission statuses:",
+          response.data.data
+            .slice(0, 3)
+            .map((s) => ({ id: s.id, status: s.status, file: s.file_path }))
+        );
         setSubmissions(response.data.data);
         setPagination((prev) => ({
           ...prev,
@@ -95,6 +104,37 @@ const SubmissionsPage = () => {
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
     setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleDownload = async (filename) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/uploads/${filename}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Failed to download file");
+    }
   };
 
   const handleViewSubmission = (submissionId) => {
@@ -151,6 +191,14 @@ const SubmissionsPage = () => {
             View and manage assessment submissions
           </p>
         </div>
+        <button
+          onClick={loadSubmissions}
+          disabled={loading}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <FaSync className={loading ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
       {/* Filters */}
@@ -295,6 +343,9 @@ const SubmissionsPage = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      File
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Submitted
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -339,6 +390,19 @@ const SubmissionsPage = () => {
                           {getStatusLabel(submission.status)}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {submission.file_path ? (
+                          <button
+                            onClick={() => handleDownload(submission.file_path)}
+                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          >
+                            <FaFileAlt />
+                            <span>Download</span>
+                          </button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {formatDate(submission.submitted_at)}
                       </td>
@@ -358,10 +422,11 @@ const SubmissionsPage = () => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleViewSubmission(submission.id)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
                             title="View submission"
                           >
                             <FaEye />
+                            <span>View</span>
                           </button>
                           {!submission.rubric_score &&
                             (submission.status === "submitted" ||
@@ -370,10 +435,11 @@ const SubmissionsPage = () => {
                                 onClick={() =>
                                   handleScoreSubmission(submission.id)
                                 }
-                                className="text-green-600 hover:text-green-800"
+                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
                                 title="Score submission"
                               >
                                 <FaStar />
+                                <span>Score</span>
                               </button>
                             )}
                         </div>

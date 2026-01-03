@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCohort } from "../context/CohortContext";
 import { scoreService, submissionService } from "../services";
@@ -13,6 +14,7 @@ import CohortSelector from "../components/CohortSelector";
 const DashboardPage = () => {
   const { user, isFacilitator, isIntern } = useAuth();
   const { selectedCohort } = useCohort();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -167,9 +169,17 @@ const DashboardPage = () => {
 
           {/* Recent Submissions */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Recent Submissions
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Recent Submissions
+              </h2>
+              <button
+                onClick={() => navigate("/submissions")}
+                className="px-4 py-2 bg-icstars-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                View All Submissions
+              </button>
+            </div>
             {stats.submissions.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">

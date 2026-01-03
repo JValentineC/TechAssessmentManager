@@ -301,6 +301,8 @@ class SubmissionController {
                     t.title as task_title,
                     t.instructions as task_instructions,
                     t.max_points,
+                    t.max_points as task_max_points,
+                    t.task_type,
                     c.name as cohort_name,
                     sc.id as score_id,
                     sc.rubric_score,
@@ -359,6 +361,9 @@ class SubmissionController {
      */
     public function update($id) {
         $user = $this->auth->requireAuth();
+        
+        error_log("🔧 UPDATE submission $id - Request method: " . $_SERVER['REQUEST_METHOD']);
+        error_log("🔧 Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'not set'));
 
         try {
             // Get submission
@@ -379,9 +384,82 @@ class SubmissionController {
                 return;
             }
 
+            // For PATCH requests, PHP doesn't populate $_FILES automatically
+            // We need to parse multipart/form-data manually
+            $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+            
+            if (stripos($contentType, 'multipart/form-data') !== false) {
+                error_log("📦 Parsing multipart/form-data for PATCH request");
+                
+                // Parse the multipart data
+                $_POST = [];
+                $_FILES = [];
+                
+                $rawInput = file_get_contents('php://input');
+                preg_match('/boundary=(.*)$/', $contentType, $matches);
+                $boundary = $matches[1] ?? null;
+                
+                if ($boundary) {
+                    $parts = array_slice(explode('--' . $boundary, $rawInput), 1);
+                    
+                    foreach ($parts as $part) {
+                        if ($part == "--\r\n") continue;
+                        if (empty(trim($part))) continue;
+                        
+                        list($rawHeaders, $body) = explode("\r\n\r\n", $part, 2);
+                        $body = substr($body, 0, -2); // Remove trailing \r\n
+                        
+                        // Parse headers
+                        $headers = [];
+                        foreach (explode("\r\n", $rawHeaders) as $header) {
+                            if (strpos($header, ':') !== false) {
+                                list($name, $value) = explode(':', $header, 2);
+                                $headers[strtolower(trim($name))] = trim($value);
+                            }
+                        }
+                        
+                        // Parse Content-Disposition
+                        if (isset($headers['content-disposition'])) {
+                            preg_match('/name="([^"]+)"/', $headers['content-disposition'], $nameMatch);
+                            $fieldName = $nameMatch[1] ?? null;
+                            
+                            if (preg_match('/filename="([^"]+)"/', $headers['content-disposition'], $fileMatch)) {
+                                // This is a file upload
+                                $filename = $fileMatch[1];
+                                $tmpPath = tempnam(sys_get_temp_dir(), 'upload_');
+                                file_put_contents($tmpPath, $body);
+                                
+                                $_FILES[$fieldName] = [
+                                    'name' => $filename,
+                                    'type' => $headers['content-type'] ?? 'application/octet-stream',
+                                    'tmp_name' => $tmpPath,
+                                    'error' => UPLOAD_ERR_OK,
+                                    'size' => strlen($body)
+                                ];
+                                error_log("✅ Parsed file: $filename (". strlen($body) . " bytes)");
+                            } else {
+                                // Regular form field
+                                $_POST[$fieldName] = $body;
+                            }
+                        }
+                    }
+                }
+                
+                try {
+                    error_log("📦 Parsed $_FILES: " . print_r($_FILES, true));
+                    error_log("📦 Parsed $_POST: " . print_r($_POST, true));
+                } catch (Exception $e) {
+                    error_log("❌ Error logging parsed data: " . $e->getMessage());
+                }
+            }
+
             // Handle file upload
             if (isset($_FILES['file'])) {
+                error_log("📁 Processing file upload for submission $id");
+                error_log("📄 File info: " . print_r($_FILES['file'], true));
+                
                 $filePath = $this->handleFileUpload($_FILES['file'], $user['id'], $submission['assessment_id']);
+                error_log("✓ File saved: $filePath");
                 
                 $stmt = $this->db->prepare("
                     UPDATE submissions 
@@ -389,7 +467,21 @@ class SubmissionController {
                     WHERE id = ?
                 ");
                 $stmt->execute([$filePath, $id]);
+                error_log("✓ Submission $id updated: status='submitted', file_path='$filePath'");
             } 
+            // Handle text submission from POST data (multipart with text field)
+            elseif (isset($_POST['submission_text']) && !empty($_POST['submission_text'])) {
+                error_log("📝 Processing text submission for submission $id");
+                $submissionText = $_POST['submission_text'];
+                
+                $stmt = $this->db->prepare("
+                    UPDATE submissions 
+                    SET submission_text = ?, status = 'submitted', submitted_at = NOW()
+                    WHERE id = ?
+                ");
+                $stmt->execute([$submissionText, $id]);
+                error_log("✓ Submission $id updated: status='submitted', text saved");
+            }
             // Handle JSON update
             else {
                 $input = json_decode(file_get_contents('php://input'), true);
@@ -404,6 +496,11 @@ class SubmissionController {
                     if ($input['status'] === 'submitted') {
                         $updates[] = "submitted_at = NOW()";
                     }
+                }
+
+                if (isset($input['submission_text'])) {
+                    $updates[] = "submission_text = ?";
+                    $params[] = $input['submission_text'];
                 }
 
                 if (isset($input['reflection_notes'])) {
@@ -422,9 +519,14 @@ class SubmissionController {
             $stmt = $this->db->prepare("SELECT * FROM submissions WHERE id = ?");
             $stmt->execute([$id]);
             $updated = $stmt->fetch();
+            
+            error_log("📤 Returning updated submission: " . json_encode(['id' => $updated['id'], 'status' => $updated['status'], 'file_path' => $updated['file_path']]));
 
             echo json_encode($updated);
         } catch (Exception $e) {
+            error_log("❌ ERROR in update submission $id: " . $e->getMessage());
+            error_log("❌ File: " . $e->getFile() . " Line: " . $e->getLine());
+            error_log("❌ Trace: " . $e->getTraceAsString());
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }
@@ -548,9 +650,20 @@ class SubmissionController {
      * Handle file upload with validation
      */
     private function handleFileUpload($file, $userId, $assessmentId): string {
-        $uploadDir = __DIR__ . '/../' . ($_ENV['UPLOAD_DIR'] ?? 'uploads');
+        error_log("🔍 handleFileUpload called with:");
+        error_log("  file array: " . print_r($file, true));
+        error_log("  file['name']: " . (isset($file['name']) ? (is_array($file['name']) ? 'ARRAY!' : $file['name']) : 'NOT SET'));
+        
+        // Get upload directory - check if it's an absolute path
+        $uploadPath = $_ENV['UPLOAD_DIR'] ?? 'uploads';
+        $uploadDir = (substr($uploadPath, 0, 1) === '/' || substr($uploadPath, 1, 1) === ':') 
+            ? $uploadPath  // Absolute path (Unix or Windows)
+            : __DIR__ . '/../' . $uploadPath;  // Relative path
+        
+        error_log("  Upload dir: $uploadDir");
         
         if (!is_dir($uploadDir)) {
+            error_log("  Directory doesn't exist, creating: $uploadDir");
             mkdir($uploadDir, 0755, true);
         }
 
@@ -565,21 +678,74 @@ class SubmissionController {
             throw new Exception('File too large');
         }
 
+        error_log("  About to get extension from: " . $file['name']);
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($ext, $allowedTypes)) {
             throw new Exception('Invalid file type');
         }
 
         // Sanitize filename
+        error_log("  About to get filename from: " . $file['name']);
         $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
         $filename = $userId . '_' . $assessmentId . '_' . time() . '_' . $filename . '.' . $ext;
         
         $destination = $uploadDir . '/' . $filename;
         
-        if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            throw new Exception('Failed to move uploaded file');
+        error_log("  Source: " . $file['tmp_name']);
+        error_log("  Destination: " . $destination);
+        
+        // Use copy() + unlink() instead of rename() for cross-filesystem compatibility
+        // and to work with manually parsed multipart data
+        if (!copy($file['tmp_name'], $destination)) {
+            throw new Exception('Failed to copy uploaded file');
         }
+        
+        // Delete the temp file after successful copy
+        @unlink($file['tmp_name']);
 
         return $filename;
+    }
+    
+    public function downloadFile($filename) {
+        // Require authentication
+        $user = $this->auth->requireAuth();
+        
+        // Get upload directory path
+        $uploadPath = $_ENV['UPLOAD_DIR'] ?? 'uploads';
+        $uploadDir = (substr($uploadPath, 0, 1) === '/' || substr($uploadPath, 1, 1) === ':') 
+            ? $uploadPath 
+            : __DIR__ . '/../' . $uploadPath;
+        
+        $filePath = $uploadDir . '/' . $filename;
+        
+        // Security: Prevent directory traversal
+        $realPath = realpath($filePath);
+        $realUploadDir = realpath($uploadDir);
+        
+        if (!$realPath || !$realUploadDir || strpos($realPath, $realUploadDir) !== 0) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Access denied']);
+            return;
+        }
+        
+        if (!file_exists($filePath)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'File not found']);
+            return;
+        }
+        
+        // Get file info
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $filePath);
+        finfo_close($finfo);
+        
+        // Send file
+        header('Content-Type: ' . $mimeType);
+        header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: no-cache');
+        
+        readfile($filePath);
+        exit;
     }
 }

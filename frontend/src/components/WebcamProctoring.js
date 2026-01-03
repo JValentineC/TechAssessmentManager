@@ -8,17 +8,32 @@ const WebcamProctoring = ({ assessmentId }) => {
   const [stream, setStream] = useState(null);
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState(null);
+  const timeoutRef = useRef(null); // Track the snapshot timeout
 
   useEffect(() => {
     initializeWebcam();
     scheduleRandomSnapshots();
 
     return () => {
+      // Cleanup timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      // Stop all media tracks
       if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+        stream.getTracks().forEach((track) => {
+          track.stop();
+          console.log("🔴 Stopped webcam track:", track.label);
+        });
+      }
+
+      // Clear video source
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
-  }, []);
+  }, [stream]); // Add stream as dependency so cleanup always has latest reference
 
   const initializeWebcam = async () => {
     try {
@@ -53,7 +68,8 @@ const WebcamProctoring = ({ assessmentId }) => {
         Math.floor(Math.random() * (maxInterval - minInterval + 1)) +
         minInterval;
 
-      setTimeout(async () => {
+      // Store timeout reference so we can clear it on cleanup
+      timeoutRef.current = setTimeout(async () => {
         await captureSnapshot();
         scheduleNext();
       }, randomDelay);

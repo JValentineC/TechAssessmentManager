@@ -9,6 +9,7 @@ const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [cohorts, setCohorts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filters, setFilters] = useState({
     role: "",
@@ -31,6 +32,7 @@ const UserManagementPage = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
@@ -41,15 +43,22 @@ const UserManagementPage = () => {
       });
 
       const response = await api.get(`/users?${params}`);
+      console.log("Users API response:", response.data);
+
       if (response.data.success) {
-        setUsers(response.data.data);
+        setUsers(Array.isArray(response.data.data) ? response.data.data : []);
         setPagination((prev) => ({
           ...prev,
           ...response.data.pagination,
         }));
+      } else {
+        setError(response.data.error || "Failed to load users");
       }
     } catch (error) {
       console.error("Failed to load users:", error);
+      setError(
+        error.response?.data?.error || error.message || "Failed to load users"
+      );
     } finally {
       setLoading(false);
     }
@@ -193,6 +202,12 @@ const UserManagementPage = () => {
 
       {/* Users Table */}
       <div className="card">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="spinner"></div>

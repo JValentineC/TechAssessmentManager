@@ -14,7 +14,8 @@ class Database {
         $password = $_ENV['DB_PASS'] ?? '';
         $charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
 
-        $dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";
+        // For NFSN, must specify port to force TCP connection
+        $dsn = "mysql:host={$host};port=3306;dbname={$dbname};charset={$charset}";
         
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
