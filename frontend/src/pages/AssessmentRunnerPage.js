@@ -6,6 +6,7 @@ import { assessmentService, submissionService } from "../services";
 import Timer from "../components/Timer";
 import FileUpload from "../components/FileUpload";
 import WebcamProctoring from "../components/WebcamProctoring";
+import TaskRenderer from "../components/TaskRenderer";
 import { FaExclamationTriangle } from "react-icons/fa";
 
 const AssessmentRunnerPage = () => {
@@ -17,7 +18,7 @@ const AssessmentRunnerPage = () => {
   const [assessment, setAssessment] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [submissions, setSubmissions] = useState({});
-  const [textInputs, setTextInputs] = useState({});
+  const [taskAnswers, setTaskAnswers] = useState({});
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [startTime, setStartTime] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -135,19 +136,38 @@ const AssessmentRunnerPage = () => {
     }
   };
 
-  const handleTextSubmit = async (taskId) => {
+  const handleTaskSubmit = async (taskId) => {
     const submission = submissions[taskId];
-    const text = textInputs[taskId] || "";
+    const answer = taskAnswers[taskId];
+    const currentTask = tasks.find((t) => t.id === taskId);
 
-    if (!text.trim()) {
-      alert("Please enter your answer before submitting.");
+    // Handle different submission types based on task type
+    if (
+      currentTask?.task_type === "file_upload" ||
+      currentTask?.task_type === "drag_drop_upload"
+    ) {
+      // File upload handled by handleFileUpload
+      if (!answer || !answer.name) {
+        alert("Please upload a file before submitting.");
+        return;
+      }
+      // File already uploaded via handleFileUpload
+      return;
+    }
+
+    // Handle text-based submissions
+    const submissionText =
+      typeof answer === "object" ? JSON.stringify(answer) : answer || "";
+
+    if (!submissionText.trim()) {
+      alert("Please provide your answer before submitting.");
       return;
     }
 
     try {
       const updatedSubmission = await submissionService.submitText(
         submission.id,
-        text
+        submissionText
       );
 
       setSubmissions((prev) => ({
@@ -155,11 +175,11 @@ const AssessmentRunnerPage = () => {
         [taskId]: {
           ...prev[taskId],
           ...updatedSubmission,
-          submission_text: text,
+          submission_text: submissionText,
         },
       }));
     } catch (error) {
-      console.error("❌ Text submission failed:", error);
+      console.error("❌ Submission failed:", error);
       throw new Error(error.response?.data?.error || "Submission failed");
     }
   };
@@ -308,16 +328,8 @@ const AssessmentRunnerPage = () => {
           {/* Task Submission Area */}
           {currentTask?.max_points > 0 && (
             <div>
-              <h3 className="font-semibold text-gray-800 mb-3">
-                {currentTask.task_type === "text_input"
-                  ? "Enter Your Answer"
-                  : currentTask.task_type === "link"
-                  ? "Submit Link or Upload File"
-                  : "Upload Your Solution"}
-              </h3>
-
               {currentSubmission?.status === "submitted" ? (
-                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center">
+                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center mb-4">
                   <div className="text-green-600 text-5xl mb-2">✓</div>
                   <h4 className="text-xl font-bold text-green-800 mb-2">
                     Task Submitted Successfully!
@@ -337,64 +349,60 @@ const AssessmentRunnerPage = () => {
                 </div>
               ) : null}
 
-              <div
-                className={
-                  currentSubmission?.status === "submitted" ? "mt-4" : ""
-                }
-              >
-                {/* Text Input Type */}
-                {currentTask.task_type === "text_input" && (
-                  <div>
-                    <textarea
-                      value={
-                        textInputs[currentTask.id] ||
-                        currentSubmission?.submission_text ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setTextInputs((prev) => ({
-                          ...prev,
-                          [currentTask.id]: e.target.value,
-                        }))
-                      }
-                      className="w-full border border-gray-300 rounded-lg p-3 min-h-[200px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter your answer here..."
-                    />
-                    <button
-                      onClick={() => handleTextSubmit(currentTask.id)}
-                      className="btn-primary mt-3"
-                      disabled={!textInputs[currentTask.id]?.trim()}
-                    >
-                      Submit Answer
-                    </button>
-                  </div>
+              {/* Dynamic Task Renderer */}
+              <div className="mb-4">
+                <TaskRenderer
+                  task={currentTask}
+                  value={
+                    taskAnswers[currentTask.id] ||
+                    currentSubmission?.submission_text ||
+                    ""
+                  }
+                  onChange={(newValue) => {
+                    setTaskAnswers((prev) => ({
+                      ...prev,
+                      [currentTask.id]: newValue,
+                    }));
+                  }}
+                  readOnly={false}
+                />
+              </div>
+
+              {/* Submit Button */}
+              {currentTask.task_type !== "file_upload" &&
+                currentTask.task_type !== "drag_drop_upload" && (
+                  <button
+                    onClick={() => handleTaskSubmit(currentTask.id)}
+                    className="btn-primary"
+                    disabled={!taskAnswers[currentTask.id]}
+                  >
+                    Submit Answer
+                  </button>
                 )}
 
-                {/* File Upload Type (default and for link type which can be file or link) */}
-                {(currentTask.task_type === "file_upload" ||
-                  currentTask.task_type === "link" ||
-                  !currentTask.task_type) && (
-                  <FileUpload
-                    key={currentTask.id}
-                    taskId={currentTask.id}
-                    onUpload={handleFileUpload}
-                    acceptedTypes={
-                      currentTask.task_type === "link"
-                        ? [".pdf", ".doc", ".docx", ".txt", ".md"]
-                        : [
-                            ".txt",
-                            ".sql",
-                            ".md",
-                            ".pdf",
-                            ".png",
-                            ".jpg",
-                            ".jpeg",
-                          ]
-                    }
-                    maxSizeMB={10}
-                  />
-                )}
-              </div>
+              {/* File upload types handle their own submission via handleFileUpload */}
+              {(currentTask.task_type === "file_upload" ||
+                currentTask.task_type === "drag_drop_upload") && (
+                <FileUpload
+                  key={currentTask.id}
+                  taskId={currentTask.id}
+                  onUpload={handleFileUpload}
+                  disabled={currentSubmission?.status === "submitted"}
+                  acceptedTypes={[
+                    ".txt",
+                    ".sql",
+                    ".md",
+                    ".pdf",
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".zip",
+                    ".doc",
+                    ".docx",
+                  ]}
+                  maxSizeMB={10}
+                />
+              )}
             </div>
           )}
         </div>

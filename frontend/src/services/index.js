@@ -70,6 +70,45 @@ export const assessmentService = {
     const response = await api.get(`/tasks?assessment_id=${assessmentId}`);
     return response.data;
   },
+
+  create: async (data) => {
+    const response = await api.post("/assessments", data);
+    return response.data;
+  },
+
+  update: async (id, data) => {
+    const response = await api.patch(`/assessments/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/assessments/${id}`);
+    return response.data;
+  },
+};
+
+export const taskService = {
+  create: async (data) => {
+    const response = await api.post("/tasks", data);
+    return response.data;
+  },
+
+  update: async (id, data) => {
+    const response = await api.patch(`/tasks/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/tasks/${id}`);
+    return response.data;
+  },
+
+  reorder: async (id, newOrder) => {
+    const response = await api.patch(`/tasks/${id}/reorder`, {
+      order_index: newOrder,
+    });
+    return response.data;
+  },
 };
 
 export const windowService = {

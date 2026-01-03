@@ -46,12 +46,20 @@ const Navbar = () => {
             </Link>
 
             {isAdmin() && (
-              <Link
-                to="/users"
-                className="hover:text-icstars-gold transition-colors"
-              >
-                Users
-              </Link>
+              <>
+                <Link
+                  to="/users"
+                  className="hover:text-icstars-gold transition-colors"
+                >
+                  Users
+                </Link>
+                <Link
+                  to="/assessment-management"
+                  className="hover:text-icstars-gold transition-colors"
+                >
+                  Assessments
+                </Link>
+              </>
             )}
 
             {(isAdmin() || isFacilitator()) && (
@@ -160,6 +168,25 @@ const Navbar = () => {
             >
               Dashboard
             </Link>
+
+            {isAdmin() && (
+              <>
+                <Link
+                  to="/users"
+                  className="block py-2 hover:text-icstars-gold transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Users
+                </Link>
+                <Link
+                  to="/assessment-management"
+                  className="block py-2 hover:text-icstars-gold transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Assessments
+                </Link>
+              </>
+            )}
 
             {isFacilitator() && (
               <>

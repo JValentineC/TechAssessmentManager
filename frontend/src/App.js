@@ -15,6 +15,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import CohortManagementPage from "./pages/CohortManagementPage";
+import AssessmentManagementPage from "./pages/AssessmentManagementPage";
 import SubmissionsPage from "./pages/SubmissionsPage";
 import AccessControlPage from "./pages/AccessControlPage";
 import AssessmentSelectionPage from "./pages/AssessmentSelectionPage";
@@ -61,6 +62,15 @@ function App() {
                 element={
                   <ProtectedRoute roles={["admin", "facilitator"]}>
                     <CohortManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="assessment-management"
+                element={
+                  <ProtectedRoute roles={["admin"]}>
+                    <AssessmentManagementPage />
                   </ProtectedRoute>
                 }
               />

@@ -90,4 +90,135 @@ class AssessmentController {
             echo json_encode(['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * POST /assessments
+     */
+    public function create() {
+        $user = $this->auth->requireRole(['admin']);
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $required = ['code', 'title', 'duration_minutes'];
+        foreach ($required as $field) {
+            if (!isset($input[$field])) {
+                http_response_code(400);
+                echo json_encode(['error' => "$field is required"]);
+                return;
+            }
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO assessments (code, title, description, duration_minutes)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $input['code'],
+                $input['title'],
+                $input['description'] ?? null,
+                $input['duration_minutes']
+            ]);
+
+            $id = $this->db->lastInsertId();
+            $stmt = $this->db->prepare("SELECT * FROM assessments WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            echo json_encode($stmt->fetch());
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * PATCH /assessments/:id
+     */
+    public function update($id) {
+        $user = $this->auth->requireRole(['admin']);
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        try {
+            $fields = [];
+            $params = [];
+            
+            if (isset($input['code'])) {
+                $fields[] = "code = ?";
+                $params[] = $input['code'];
+            }
+            if (isset($input['title'])) {
+                $fields[] = "title = ?";
+                $params[] = $input['title'];
+            }
+            if (isset($input['description'])) {
+                $fields[] = "description = ?";
+                $params[] = $input['description'];
+            }
+            if (isset($input['duration_minutes'])) {
+                $fields[] = "duration_minutes = ?";
+                $params[] = $input['duration_minutes'];
+            }
+            
+            if (empty($fields)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'No fields to update']);
+                return;
+            }
+            
+            $params[] = $id;
+            
+            $stmt = $this->db->prepare("
+                UPDATE assessments 
+                SET " . implode(', ', $fields) . "
+                WHERE id = ?
+            ");
+            $stmt->execute($params);
+            
+            $stmt = $this->db->prepare("SELECT * FROM assessments WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            echo json_encode($stmt->fetch());
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * DELETE /assessments/:id
+     */
+    public function delete($id) {
+        $user = $this->auth->requireRole(['admin']);
+        
+        try {
+            // Check if assessment has submissions
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as count FROM submissions WHERE assessment_id = ?
+            ");
+            $stmt->execute([$id]);
+            $result = $stmt->fetch();
+            
+            if ($result['count'] > 0) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Cannot delete assessment with existing submissions']);
+                return;
+            }
+            
+            // Delete tasks first (FK constraint)
+            $stmt = $this->db->prepare("DELETE FROM tasks WHERE assessment_id = ?");
+            $stmt->execute([$id]);
+            
+            // Delete assessment windows
+            $stmt = $this->db->prepare("DELETE FROM assessment_windows WHERE assessment_id = ?");
+            $stmt->execute([$id]);
+            
+            // Delete assessment
+            $stmt = $this->db->prepare("DELETE FROM assessments WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            echo json_encode(['success' => true, 'message' => 'Assessment deleted']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
 }

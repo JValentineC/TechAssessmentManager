@@ -94,8 +94,16 @@ $routes = [
     // Assessment routes
     ['GET', 'assessments', 'AssessmentController@index'],
     ['GET', 'assessments/available', 'AssessmentController@available'],
+    ['POST', 'assessments', 'AssessmentController@create'],
+    ['PATCH', 'assessments/(\d+)', 'AssessmentController@update'],
+    ['DELETE', 'assessments/(\d+)', 'AssessmentController@delete'],
+    
+    // Task routes
     ['GET', 'tasks', 'TaskController@index'],
     ['POST', 'tasks', 'TaskController@create'],
+    ['PATCH', 'tasks/(\d+)', 'TaskController@update'],
+    ['DELETE', 'tasks/(\d+)', 'TaskController@delete'],
+    ['PATCH', 'tasks/(\d+)/reorder', 'TaskController@reorder'],
 
     // Assessment window routes
     ['GET', 'assessment_windows', 'WindowController@index'],
