@@ -151,20 +151,24 @@ const AssessmentWindowCard = ({
 
   const loadUsers = async () => {
     try {
-      const data = await userService.getAll();
+      const response = await userService.getAll();
+      // Handle API response format - extract array from response
+      const userList = Array.isArray(response) ? response : response.data || [];
       // Filter to only show interns in the selected cohort
-      const cohortUsers = data.filter(
+      const cohortUsers = userList.filter(
         (user) =>
           user.role === "intern" && user.current_cohort_id == selectedCohort.id
       );
       setUsers(cohortUsers);
     } catch (error) {
       console.error("Failed to load users:", error);
+      setUsers([]);
     }
   };
 
   const handleDeleteOverride = async (overrideId) => {
-    if (!window.confirm("Are you sure you want to delete this exception?")) {
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm("Are you sure you want to delete this exception?")) {
       return;
     }
     try {

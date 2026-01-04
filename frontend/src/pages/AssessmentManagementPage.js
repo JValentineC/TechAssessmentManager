@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { assessmentService, taskService } from "../services";
+import { assessmentService, taskService, rubricService } from "../services";
 import TaskConfigModal from "../components/TaskConfigModal";
+import RubricModal from "../components/RubricModal";
 
 const AssessmentManagementPage = () => {
   const [assessments, setAssessments] = useState([]);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [rubrics, setRubrics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Modal states
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showRubricModal, setShowRubricModal] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [editingRubric, setEditingRubric] = useState(null);
+  const [rubricTaskId, setRubricTaskId] = useState(null);
 
   // Assessment form state
   const [assessmentForm, setAssessmentForm] = useState({
@@ -30,6 +35,7 @@ const AssessmentManagementPage = () => {
   useEffect(() => {
     if (selectedAssessment) {
       loadTasks(selectedAssessment.id);
+      loadRubrics(selectedAssessment.id);
     }
   }, [selectedAssessment]);
 
@@ -55,6 +61,74 @@ const AssessmentManagementPage = () => {
       setError("Failed to load tasks: " + err.message);
       setTasks([]);
     }
+  };
+
+  const loadRubrics = async (assessmentId) => {
+    try {
+      const data = await rubricService.getAll(assessmentId);
+      setRubrics(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load rubrics:", err);
+      setRubrics([]);
+    }
+  };
+
+  const handleCreateAssessmentRubric = () => {
+    // Check if an assessment-level rubric already exists
+    const existingAssessmentRubric = rubrics.find((r) => !r.task_id);
+    if (existingAssessmentRubric) {
+      // Edit the existing rubric instead
+      setEditingRubric(existingAssessmentRubric);
+      setRubricTaskId(null);
+    } else {
+      // Create new rubric
+      setEditingRubric(null);
+      setRubricTaskId(null);
+    }
+    setShowRubricModal(true);
+  };
+
+  const handleCreateTaskRubric = (taskId) => {
+    // Check if a rubric already exists for this task
+    const existingTaskRubric = rubrics.find((r) => r.task_id === taskId);
+    if (existingTaskRubric) {
+      // Edit the existing rubric instead
+      setEditingRubric(existingTaskRubric);
+      setRubricTaskId(taskId);
+    } else {
+      // Create new rubric
+      setEditingRubric(null);
+      setRubricTaskId(taskId);
+    }
+    setShowRubricModal(true);
+  };
+
+  const handleEditRubric = (rubric) => {
+    setEditingRubric(rubric);
+    setRubricTaskId(rubric.task_id);
+    setShowRubricModal(true);
+  };
+
+  const handleDeleteRubric = async (rubric) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete the rubric "${rubric.title}"?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await rubricService.delete(rubric.id);
+      await loadRubrics(selectedAssessment.id);
+      setError(null);
+    } catch (err) {
+      setError("Failed to delete rubric: " + err.message);
+    }
+  };
+
+  const handleSaveRubric = async () => {
+    await loadRubrics(selectedAssessment.id);
   };
 
   const handleCreateAssessment = () => {
@@ -340,6 +414,235 @@ const AssessmentManagementPage = () => {
         </div>
       </div>
 
+      {/* Rubrics Section */}
+      {selectedAssessment && (
+        <div className="mt-6 bg-white rounded-lg shadow-lg">
+          <div className="p-4 border-b flex justify-between items-center bg-purple-50">
+            <div>
+              <h2 className="text-xl font-bold text-purple-900">
+                📋 Scoring Rubrics for {selectedAssessment.code}
+              </h2>
+              <p className="text-sm text-purple-700 mt-1">
+                Define scoring criteria to guide facilitators
+              </p>
+            </div>
+            <button
+              onClick={handleCreateAssessmentRubric}
+              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            >
+              + Add Assessment Rubric
+            </button>
+          </div>
+
+          <div className="p-6">
+            {rubrics.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">📋</div>
+                <p className="text-lg font-medium">No rubrics defined yet</p>
+                <p className="text-sm mt-2">
+                  Create rubrics to provide clear scoring guidelines for this
+                  assessment
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Assessment-level rubric */}
+                {rubrics
+                  .filter((r) => !r.task_id)
+                  .map((rubric) => (
+                    <div
+                      key={rubric.id}
+                      className="border border-purple-200 rounded-lg p-4 bg-purple-50"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold">
+                              ASSESSMENT-WIDE
+                            </span>
+                            <h3 className="font-bold text-lg">
+                              {rubric.title}
+                            </h3>
+                          </div>
+                          {rubric.description && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {rubric.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditRubric(rubric)}
+                            className="text-blue-600 hover:text-blue-800 px-2 py-1"
+                            title="Edit Rubric"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRubric(rubric)}
+                            className="text-red-600 hover:text-red-800 px-2 py-1"
+                            title="Delete Rubric"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 text-xs">
+                        <div className="bg-red-100 p-2 rounded">
+                          <div className="font-bold text-red-700 mb-1">
+                            1 - Limited
+                          </div>
+                          <p className="text-gray-700">
+                            {rubric.level_1_criteria}
+                          </p>
+                        </div>
+                        <div className="bg-orange-100 p-2 rounded">
+                          <div className="font-bold text-orange-700 mb-1">
+                            2 - Emerging
+                          </div>
+                          <p className="text-gray-700">
+                            {rubric.level_2_criteria}
+                          </p>
+                        </div>
+                        <div className="bg-yellow-100 p-2 rounded">
+                          <div className="font-bold text-yellow-700 mb-1">
+                            3 - Developing
+                          </div>
+                          <p className="text-gray-700">
+                            {rubric.level_3_criteria}
+                          </p>
+                        </div>
+                        <div className="bg-blue-100 p-2 rounded">
+                          <div className="font-bold text-blue-700 mb-1">
+                            4 - Proficient
+                          </div>
+                          <p className="text-gray-700">
+                            {rubric.level_4_criteria}
+                          </p>
+                        </div>
+                        <div className="bg-green-100 p-2 rounded">
+                          <div className="font-bold text-green-700 mb-1">
+                            5 - Advanced
+                          </div>
+                          <p className="text-gray-700">
+                            {rubric.level_5_criteria}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                {/* Task-specific rubrics */}
+                {tasks.map((task) => {
+                  const taskRubric = rubrics.find((r) => r.task_id === task.id);
+                  return (
+                    <div
+                      key={task.id}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold">
+                              TASK #{task.order_index + 1}
+                            </span>
+                            <h4 className="font-semibold">{task.title}</h4>
+                          </div>
+                        </div>
+                        {taskRubric ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditRubric(taskRubric)}
+                              className="text-blue-600 hover:text-blue-800 px-2 py-1"
+                              title="Edit Rubric"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRubric(taskRubric)}
+                              className="text-red-600 hover:text-red-800 px-2 py-1"
+                              title="Delete Rubric"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleCreateTaskRubric(task.id)}
+                            className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                          >
+                            + Add Rubric
+                          </button>
+                        )}
+                      </div>
+                      {taskRubric ? (
+                        <>
+                          <h5 className="font-bold mt-2 mb-2">
+                            {taskRubric.title}
+                          </h5>
+                          {taskRubric.description && (
+                            <p className="text-xs text-gray-600 mb-2">
+                              {taskRubric.description}
+                            </p>
+                          )}
+                          <div className="grid grid-cols-5 gap-2 text-xs">
+                            <div className="bg-red-100 p-2 rounded">
+                              <div className="font-bold text-red-700 mb-1">
+                                1
+                              </div>
+                              <p className="text-gray-700">
+                                {taskRubric.level_1_criteria}
+                              </p>
+                            </div>
+                            <div className="bg-orange-100 p-2 rounded">
+                              <div className="font-bold text-orange-700 mb-1">
+                                2
+                              </div>
+                              <p className="text-gray-700">
+                                {taskRubric.level_2_criteria}
+                              </p>
+                            </div>
+                            <div className="bg-yellow-100 p-2 rounded">
+                              <div className="font-bold text-yellow-700 mb-1">
+                                3
+                              </div>
+                              <p className="text-gray-700">
+                                {taskRubric.level_3_criteria}
+                              </p>
+                            </div>
+                            <div className="bg-blue-100 p-2 rounded">
+                              <div className="font-bold text-blue-700 mb-1">
+                                4
+                              </div>
+                              <p className="text-gray-700">
+                                {taskRubric.level_4_criteria}
+                              </p>
+                            </div>
+                            <div className="bg-green-100 p-2 rounded">
+                              <div className="font-bold text-green-700 mb-1">
+                                5
+                              </div>
+                              <p className="text-gray-700">
+                                {taskRubric.level_5_criteria}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic mt-2">
+                          No rubric defined for this task. The assessment-wide
+                          rubric will be used if available.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Assessment Modal */}
       {showAssessmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -452,6 +755,16 @@ const AssessmentManagementPage = () => {
         onClose={() => setShowTaskModal(false)}
         onSave={handleSaveTask}
         initialTask={editingTask}
+      />
+
+      {/* Rubric Modal */}
+      <RubricModal
+        show={showRubricModal}
+        onClose={() => setShowRubricModal(false)}
+        assessmentId={selectedAssessment?.id}
+        taskId={rubricTaskId}
+        existingRubric={editingRubric}
+        onSave={handleSaveRubric}
       />
     </div>
   );

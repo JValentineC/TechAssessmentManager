@@ -147,6 +147,13 @@ $routes = [
     // Snapshot routes
     ['POST', 'snapshots', 'SnapshotController@create'],
     ['GET', 'snapshots', 'SnapshotController@index'],
+
+    // Rubric routes
+    ['GET', 'rubrics', 'RubricController@index'],
+    ['GET', 'rubrics/(\d+)', 'RubricController@show'],
+    ['POST', 'rubrics', 'RubricController@create'],
+    ['PATCH', 'rubrics/(\d+)', 'RubricController@update'],
+    ['DELETE', 'rubrics/(\d+)', 'RubricController@delete'],
 ];
 
 // Match route

@@ -43,6 +43,10 @@ if ($target -eq "backend" -or $target -eq "all") {
     # Upload root .htaccess
     scp ".htaccess" "${NFSN_USER}@${NFSN_HOST}:${REMOTE_PUBLIC}/"
     
+    # Fix permissions on API directory
+    Write-Host "Setting permissions..." -ForegroundColor Yellow
+    ssh "${NFSN_USER}@${NFSN_HOST}" "chmod -R 755 ${REMOTE_PUBLIC}/api"
+    
     Write-Host "Backend deployed!" -ForegroundColor Green
 }
 

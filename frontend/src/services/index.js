@@ -286,3 +286,35 @@ export const userService = {
     return response.data;
   },
 };
+
+export const rubricService = {
+  getAll: async (assessmentId) => {
+    const response = await api.get(`/rubrics?assessment_id=${assessmentId}`);
+    return response.data;
+  },
+
+  getByTask: async (taskId) => {
+    const response = await api.get(`/rubrics?task_id=${taskId}`);
+    return response.data;
+  },
+
+  getById: async (id) => {
+    const response = await api.get(`/rubrics/${id}`);
+    return response.data;
+  },
+
+  create: async (data) => {
+    const response = await api.post("/rubrics", data);
+    return response.data;
+  },
+
+  update: async (id, data) => {
+    const response = await api.patch(`/rubrics/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await api.delete(`/rubrics/${id}`);
+    return response.data;
+  },
+};

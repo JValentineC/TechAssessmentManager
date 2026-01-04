@@ -142,8 +142,8 @@ const LoginPage = () => {
         <div className="mt-6 text-center text-sm text-white bg-blue-900 bg-opacity-50 rounded-lg p-4">
           <p className="font-semibold mb-2">Demo Credentials:</p>
           <p>Admin: admin@icstars.org / Admin@2026!</p>
-          <p>Facilitator: facilitator@icstars.org / Facilitator@2026!</p>
-          <p>Intern: intern@icstars.org / Intern@2026!</p>
+          <p>Facilitator: facilitator@icstars.org / Admin@2026!</p>
+          <p>Intern: intern@icstars.org / Admin@2026!</p>
         </div>
       </div>
     </div>

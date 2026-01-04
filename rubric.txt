@@ -1,0 +1,25 @@
+Rubric for Performance
+Assessment | Task | Limited (1) | Emerging (2) | Developing (3) | Proficient (4) | Advanced (5)
+
+Assessment A
+task 1 - Shared Doc Collaboration (DC.SK1, DC.SK2)
+1-Cannot access or edit doc.
+2-Opens doc but no edits/ comments.
+3-Edits doc OR adds 1 basic comment.
+4-Edits doc + 2+ meaningful comments; sets correct permissions; file in correctly named folder.
+5-Adds folder README (Purpose, Owner, How to Contribute); comments show insight; models best practice by coaching peers.
+
+task 2 - Environment Setup Verification (SE.SK1–3, SD.SK3–4)
+1-Cannot open IDE or terminal.
+2-IDE installed but cannot demonstrate Git.
+3-Runs git init or commit but repo incomplete.
+4-IDE open, repo connected to GitHub; ≥2 commits with meaningful messages; push verified.
+5-Adds enhancements (README, .gitignore); commits follow scaffold → feature → refactor pattern.
+
+task 3 - Security Checklist (CY.SK1–3)
+1-Leaves blank/incomplete answers.
+2-Provides generic responses (e.g., “use strong password”).
+3-Identifies 1–2 correct practices but limited detail.
+4-Lists 3+ practices (MFA, password manager, updates) + 1 personal risk/mitigation.
+5-Applies advanced practices (VPN, secure repos, .env for secrets); articulates rationale for each.
+

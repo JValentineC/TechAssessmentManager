@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { rubricService } from "../services";
 import {
   FaStar,
   FaRegStar,
@@ -22,6 +23,7 @@ const ScoringPage = () => {
   const submissionId = searchParams.get("submission");
 
   const [submission, setSubmission] = useState(null);
+  const [rubric, setRubric] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState(false);
   const [score, setScore] = useState({
@@ -47,6 +49,16 @@ const ScoringPage = () => {
         const data = response.data.data;
         setSubmission(data);
 
+        // Load rubric for this task
+        try {
+          const rubricData = await rubricService.getByTask(data.task_id);
+          setRubric(rubricData);
+        } catch (err) {
+          console.log("No rubric found for task:", err);
+          setRubric(null);
+        }
+
+        //
         // Pre-fill if already scored
         if (data.rubric_score) {
           setScore({
@@ -329,32 +341,112 @@ const ScoringPage = () => {
                 {submission.task_instructions}
               </p>
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-yellow-800 mb-2">
-                📋 Rubric (Max Points: {submission.task_max_points || 5})
-              </p>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>
-                  <strong>5 stars:</strong> Exceptional - Exceeds all
-                  requirements
-                </li>
-                <li>
-                  <strong>4 stars:</strong> Proficient - Meets all requirements
-                  well
-                </li>
-                <li>
-                  <strong>3 stars:</strong> Competent - Meets basic requirements
-                </li>
-                <li>
-                  <strong>2 stars:</strong> Developing - Partially meets
-                  requirements
-                </li>
-                <li>
-                  <strong>1 star:</strong> Beginning - Does not meet
-                  requirements
-                </li>
-              </ul>
-            </div>
+
+            {/* Rubric Display */}
+            {rubric ? (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">📋</span>
+                  <h3 className="font-bold text-purple-900">{rubric.title}</h3>
+                </div>
+                {rubric.description && (
+                  <p className="text-sm text-gray-700 mb-3">
+                    {rubric.description}
+                  </p>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div className="bg-red-100 border border-red-300 rounded p-3">
+                    <div className="font-bold text-red-800 mb-1 flex items-center gap-1">
+                      <span>1</span>
+                      <FaRegStar className="text-sm" />
+                    </div>
+                    <p className="text-sm font-semibold text-red-700 mb-1">
+                      Limited
+                    </p>
+                    <p className="text-xs text-gray-700">
+                      {rubric.level_1_criteria}
+                    </p>
+                  </div>
+                  <div className="bg-orange-100 border border-orange-300 rounded p-3">
+                    <div className="font-bold text-orange-800 mb-1 flex items-center gap-1">
+                      <span>2</span>
+                      <FaRegStar className="text-sm" />
+                    </div>
+                    <p className="text-sm font-semibold text-orange-700 mb-1">
+                      Emerging
+                    </p>
+                    <p className="text-xs text-gray-700">
+                      {rubric.level_2_criteria}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-100 border border-yellow-300 rounded p-3">
+                    <div className="font-bold text-yellow-800 mb-1 flex items-center gap-1">
+                      <span>3</span>
+                      <FaRegStar className="text-sm" />
+                    </div>
+                    <p className="text-sm font-semibold text-yellow-700 mb-1">
+                      Developing
+                    </p>
+                    <p className="text-xs text-gray-700">
+                      {rubric.level_3_criteria}
+                    </p>
+                  </div>
+                  <div className="bg-blue-100 border border-blue-300 rounded p-3">
+                    <div className="font-bold text-blue-800 mb-1 flex items-center gap-1">
+                      <span>4</span>
+                      <FaStar className="text-sm" />
+                    </div>
+                    <p className="text-sm font-semibold text-blue-700 mb-1">
+                      Proficient
+                    </p>
+                    <p className="text-xs text-gray-700">
+                      {rubric.level_4_criteria}
+                    </p>
+                  </div>
+                  <div className="bg-green-100 border border-green-300 rounded p-3">
+                    <div className="font-bold text-green-800 mb-1 flex items-center gap-1">
+                      <span>5</span>
+                      <FaStar className="text-sm" />
+                    </div>
+                    <p className="text-sm font-semibold text-green-700 mb-1">
+                      Advanced
+                    </p>
+                    <p className="text-xs text-gray-700">
+                      {rubric.level_5_criteria}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-yellow-800 mb-2">
+                  📋 General Rubric (Max Points:{" "}
+                  {submission.task_max_points || 5})
+                </p>
+                <ul className="text-sm text-gray-700 space-y-1">
+                  <li>
+                    <strong>5 stars:</strong> Exceptional - Exceeds all
+                    requirements
+                  </li>
+                  <li>
+                    <strong>4 stars:</strong> Proficient - Meets all
+                    requirements well
+                  </li>
+                  <li>
+                    <strong>3 stars:</strong> Competent - Meets basic
+                    requirements
+                  </li>
+                  <li>
+                    <strong>2 stars:</strong> Developing - Partially meets
+                    requirements
+                  </li>
+                  <li>
+                    <strong>1 star:</strong> Beginning - Does not meet
+                    requirements
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Submitted Text Answer */}
