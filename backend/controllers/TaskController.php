@@ -179,8 +179,24 @@ class TaskController {
             
             if ($result['count'] > 0) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Cannot delete task with existing submissions']);
+                echo json_encode([
+                    'error' => 'Cannot delete task with existing submissions. This task has ' . 
+                               $result['count'] . ' submission(s). Please archive the assessment instead or delete submissions first.'
+                ]);
                 return;
+            }
+            
+            // Check if task has associated rubrics
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as count FROM rubrics WHERE task_id = ?
+            ");
+            $stmt->execute([$id]);
+            $rubricResult = $stmt->fetch();
+            
+            if ($rubricResult['count'] > 0) {
+                // Delete associated rubrics first
+                $stmt = $this->db->prepare("DELETE FROM rubrics WHERE task_id = ?");
+                $stmt->execute([$id]);
             }
             
             $stmt = $this->db->prepare("DELETE FROM tasks WHERE id = ?");

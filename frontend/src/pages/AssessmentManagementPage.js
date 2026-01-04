@@ -227,7 +227,10 @@ const AssessmentManagementPage = () => {
       await loadTasks(selectedAssessment.id);
       setError(null);
     } catch (err) {
-      setError("Failed to delete task: " + err.message);
+      setError(
+        "Failed to delete task: " +
+          (err.response?.data?.error || err.message)
+      );
     }
   };
 
