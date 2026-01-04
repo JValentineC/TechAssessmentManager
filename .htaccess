@@ -5,11 +5,12 @@ AddType application/x-httpd-php .php
 RewriteEngine On
 RewriteBase /
 
-# Route API requests to api/public/index.php
+# Route API requests to backend API (protected directory)
+# This assumes symlink: /home/public/api -> /home/protected/backend/public
 RewriteCond %{REQUEST_URI} ^/api/
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^api/(.*)$ api/public/index.php [QSA,L]
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
 
 # Frontend routing (for React SPA)
 RewriteCond %{REQUEST_FILENAME} !-f

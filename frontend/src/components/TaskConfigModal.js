@@ -574,6 +574,414 @@ const TaskConfigModal = ({ isOpen, onClose, onSave, initialTask = null }) => {
           </div>
         );
 
+      case "composite":
+        const components = config.components || [];
+        
+        const addComponent = () => {
+          setConfig({
+            ...config,
+            components: [...components, { type: "text_input", label: "", required: false }]
+          });
+        };
+
+        const removeComponent = (index) => {
+          setConfig({
+            ...config,
+            components: components.filter((_, i) => i !== index)
+          });
+        };
+
+        const updateComponent = (index, field, value) => {
+          const newComponents = [...components];
+          newComponents[index] = { ...newComponents[index], [field]: value };
+          setConfig({ ...config, components: newComponents });
+        };
+
+        const renderComponentConfig = (component, index) => {
+          const compType = component.type || "text_input";
+
+          return (
+            <div key={index} className="border border-gray-300 rounded-lg p-4 bg-white">
+              <div className="flex justify-between items-start mb-4">
+                <h4 className="font-medium text-gray-700">Component {index + 1}</h4>
+                <button
+                  type="button"
+                  onClick={() => removeComponent(index)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+
+              {/* Component Type Selector */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium mb-1">Component Type</label>
+                <select
+                  value={compType}
+                  onChange={(e) => {
+                    // Reset component with new type
+                    const newComp = { type: e.target.value, label: component.label || "" };
+                    const newComponents = [...components];
+                    newComponents[index] = newComp;
+                    setConfig({ ...config, components: newComponents });
+                  }}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="text_input">Text Input</option>
+                  <option value="text_area">Text Area</option>
+                  <option value="code_block">Code Block</option>
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="checkbox">Checkbox List</option>
+                  <option value="number_input">Number Input</option>
+                  <option value="divider">Divider</option>
+                  <option value="info_text">Info Text</option>
+                </select>
+              </div>
+
+              {/* Common Fields */}
+              {compType !== "divider" && (
+                <>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Label</label>
+                    <input
+                      type="text"
+                      value={component.label || ""}
+                      onChange={(e) => updateComponent(index, "label", e.target.value)}
+                      className="w-full p-2 border rounded"
+                      placeholder="Component label"
+                    />
+                  </div>
+
+                  {compType !== "info_text" && (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium mb-1">Description (optional)</label>
+                      <input
+                        type="text"
+                        value={component.description || ""}
+                        onChange={(e) => updateComponent(index, "description", e.target.value)}
+                        className="w-full p-2 border rounded"
+                        placeholder="Helper text"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Type-Specific Fields */}
+              {compType === "text_input" && (
+                <>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Placeholder</label>
+                    <input
+                      type="text"
+                      value={component.placeholder || ""}
+                      onChange={(e) => updateComponent(index, "placeholder", e.target.value)}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={component.required || false}
+                          onChange={(e) => updateComponent(index, "required", e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Required</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">Min Length</label>
+                      <input
+                        type="number"
+                        value={component.minLength || ""}
+                        onChange={(e) => updateComponent(index, "minLength", parseInt(e.target.value) || undefined)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">Max Length</label>
+                      <input
+                        type="number"
+                        value={component.maxLength || ""}
+                        onChange={(e) => updateComponent(index, "maxLength", parseInt(e.target.value) || undefined)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {compType === "text_area" && (
+                <>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Placeholder</label>
+                    <input
+                      type="text"
+                      value={component.placeholder || ""}
+                      onChange={(e) => updateComponent(index, "placeholder", e.target.value)}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs mb-1">Rows</label>
+                      <input
+                        type="number"
+                        value={component.rows || 4}
+                        onChange={(e) => updateComponent(index, "rows", parseInt(e.target.value) || 4)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center pt-5">
+                        <input
+                          type="checkbox"
+                          checked={component.required || false}
+                          onChange={(e) => updateComponent(index, "required", e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Required</span>
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {compType === "code_block" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Language</label>
+                      <input
+                        type="text"
+                        value={component.language || ""}
+                        onChange={(e) => updateComponent(index, "language", e.target.value)}
+                        className="w-full p-2 border rounded"
+                        placeholder="python, javascript, sql..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Rows</label>
+                      <input
+                        type="number"
+                        value={component.rows || 12}
+                        onChange={(e) => updateComponent(index, "rows", parseInt(e.target.value) || 12)}
+                        className="w-full p-2 border rounded"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        checked={component.readOnly || false}
+                        onChange={(e) => updateComponent(index, "readOnly", e.target.checked)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Read Only (Reference code)</span>
+                    </label>
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Template Code</label>
+                    <textarea
+                      value={component.templateCode || ""}
+                      onChange={(e) => updateComponent(index, "templateCode", e.target.value)}
+                      className="w-full p-2 border rounded font-mono text-sm"
+                      rows={4}
+                      placeholder="Starter code..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {(compType === "multiple_choice" || compType === "checkbox") && (
+                <div className="mb-3">
+                  <label className="block text-sm font-medium mb-2">Options</label>
+                  {(component.options || []).map((opt, optIndex) => (
+                    <div key={optIndex} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={opt.value || ""}
+                        onChange={(e) => {
+                          const newOptions = [...(component.options || [])];
+                          newOptions[optIndex] = { ...opt, value: e.target.value };
+                          updateComponent(index, "options", newOptions);
+                        }}
+                        className="w-1/3 p-2 border rounded text-sm"
+                        placeholder="Value"
+                      />
+                      <input
+                        type="text"
+                        value={opt.label || ""}
+                        onChange={(e) => {
+                          const newOptions = [...(component.options || [])];
+                          newOptions[optIndex] = { ...opt, label: e.target.value };
+                          updateComponent(index, "options", newOptions);
+                        }}
+                        className="flex-1 p-2 border rounded text-sm"
+                        placeholder="Label"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newOptions = (component.options || []).filter((_, i) => i !== optIndex);
+                          updateComponent(index, "options", newOptions);
+                        }}
+                        className="text-red-600 hover:text-red-800 px-2"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newOptions = [...(component.options || []), { value: "", label: "" }];
+                      updateComponent(index, "options", newOptions);
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Add Option
+                  </button>
+                  {compType === "multiple_choice" && (
+                    <div className="mt-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={component.required || false}
+                          onChange={(e) => updateComponent(index, "required", e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Required</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {compType === "number_input" && (
+                <>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Placeholder</label>
+                    <input
+                      type="text"
+                      value={component.placeholder || ""}
+                      onChange={(e) => updateComponent(index, "placeholder", e.target.value)}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={component.required || false}
+                          onChange={(e) => updateComponent(index, "required", e.target.checked)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Required</span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">Min</label>
+                      <input
+                        type="number"
+                        value={component.min || ""}
+                        onChange={(e) => updateComponent(index, "min", parseFloat(e.target.value) || undefined)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">Max</label>
+                      <input
+                        type="number"
+                        value={component.max || ""}
+                        onChange={(e) => updateComponent(index, "max", parseFloat(e.target.value) || undefined)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1">Step</label>
+                      <input
+                        type="number"
+                        value={component.step || ""}
+                        onChange={(e) => updateComponent(index, "step", parseFloat(e.target.value) || undefined)}
+                        className="w-full p-1 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {compType === "info_text" && (
+                <>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Text</label>
+                    <textarea
+                      value={component.text || ""}
+                      onChange={(e) => updateComponent(index, "text", e.target.value)}
+                      className="w-full p-2 border rounded"
+                      rows={3}
+                      placeholder="Information message..."
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1">Style</label>
+                    <select
+                      value={component.style || "info"}
+                      onChange={(e) => updateComponent(index, "style", e.target.value)}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="info">Info (Blue)</option>
+                      <option value="warning">Warning (Yellow)</option>
+                      <option value="success">Success (Green)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        };
+
+        return (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Composite tasks</strong> let you combine multiple components. Add components below and configure each one.
+              </p>
+            </div>
+
+            {/* Component List */}
+            <div className="space-y-3">
+              {components.map((comp, index) => renderComponentConfig(comp, index))}
+            </div>
+
+            {/* Add Component Button */}
+            <button
+              type="button"
+              onClick={addComponent}
+              className="w-full p-3 border-2 border-dashed border-blue-300 text-blue-600 hover:border-blue-500 hover:bg-blue-50 rounded-lg font-medium transition"
+            >
+              + Add Component
+            </button>
+
+            {components.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-50 rounded border">
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700">
+                    View JSON Configuration
+                  </summary>
+                  <pre className="mt-2 text-xs bg-white p-3 rounded border overflow-x-auto">
+                    {JSON.stringify({ components }, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -680,6 +1088,7 @@ const TaskConfigModal = ({ isOpen, onClose, onSave, initialTask = null }) => {
               <option value="single_input">Single Text Input</option>
               <option value="multiple_inputs">Multiple Text Inputs</option>
               <option value="text_area">Text Area (Long Answer)</option>
+              <option value="composite">Composite (Multiple Components)</option>
               <option value="file_upload">File Upload</option>
               <option value="drag_drop_upload">Drag & Drop Upload</option>
               <option value="code_editor">Code Editor</option>

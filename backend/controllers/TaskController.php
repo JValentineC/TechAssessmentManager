@@ -71,7 +71,7 @@ class TaskController {
                 $input['max_points'] ?? 5,
                 $input['order_index'] ?? 0,
                 $input['task_type'] ?? 'single_input',
-                $input['task_config'] ?? null
+                isset($input['task_config']) ? (is_string($input['task_config']) ? $input['task_config'] : json_encode($input['task_config'])) : null
             ]);
 
             $taskId = $this->db->lastInsertId();
@@ -93,6 +93,9 @@ class TaskController {
     public function update($id) {
         $user = $this->auth->requireRole(['admin', 'facilitator']);
         $input = json_decode(file_get_contents('php://input'), true);
+
+        error_log("TaskController::update - ID: $id");
+        error_log("TaskController::update - Input: " . json_encode($input));
 
         try {
             $fields = [];
@@ -124,7 +127,8 @@ class TaskController {
             }
             if (isset($input['task_config'])) {
                 $fields[] = "task_config = ?";
-                $params[] = $input['task_config'];
+                // If task_config is already a string, use it; otherwise encode it
+                $params[] = is_string($input['task_config']) ? $input['task_config'] : json_encode($input['task_config']);
             }
             
             if (empty($fields)) {
@@ -135,6 +139,9 @@ class TaskController {
             
             $params[] = $id;
             
+            error_log("TaskController::update - SQL: UPDATE tasks SET " . implode(', ', $fields) . " WHERE id = ?");
+            error_log("TaskController::update - Params: " . json_encode($params));
+            
             $stmt = $this->db->prepare("
                 UPDATE tasks 
                 SET " . implode(', ', $fields) . "
@@ -142,11 +149,15 @@ class TaskController {
             ");
             $stmt->execute($params);
             
+            error_log("TaskController::update - Success!");
+            
             $stmt = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
             $stmt->execute([$id]);
             
             echo json_encode($stmt->fetch());
         } catch (Exception $e) {
+            error_log("TaskController::update - Error: " . $e->getMessage());
+            error_log("TaskController::update - Trace: " . $e->getTraceAsString());
             http_response_code(500);
             echo json_encode(['error' => $e->getMessage()]);
         }

@@ -37,10 +37,11 @@ const AssessmentManagementPage = () => {
     try {
       setLoading(true);
       const data = await assessmentService.getAll();
-      setAssessments(data);
+      setAssessments(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError("Failed to load assessments: " + err.message);
+      setAssessments([]);
     } finally {
       setLoading(false);
     }
@@ -49,9 +50,10 @@ const AssessmentManagementPage = () => {
   const loadTasks = async (assessmentId) => {
     try {
       const data = await assessmentService.getTasks(assessmentId);
-      setTasks(data);
+      setTasks(Array.isArray(data) ? data : []);
     } catch (err) {
       setError("Failed to load tasks: " + err.message);
+      setTasks([]);
     }
   };
 

@@ -327,31 +327,31 @@ const SubmissionsPage = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Intern
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cohort
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Assessment
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Task
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       File
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Submitted
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Score
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -359,29 +359,26 @@ const SubmissionsPage = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {submissions.map((submission) => (
                     <tr key={submission.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">
+                      <td className="px-3 py-3">
+                        <div className="font-medium text-gray-900 text-sm">
                           {submission.user_name}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {submission.user_email}
-                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-3 text-sm text-gray-600">
                         {submission.cohort_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">
+                      <td className="px-3 py-3">
+                        <div className="font-medium text-gray-900 text-sm">
                           {submission.assessment_title}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Code {submission.assessment_code}
+                        <div className="text-xs text-gray-500">
+                          {submission.assessment_code}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
                         {submission.task_title}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
                             submission.status
@@ -390,27 +387,27 @@ const SubmissionsPage = () => {
                           {getStatusLabel(submission.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-2 py-3 whitespace-nowrap text-sm">
                         {submission.file_path ? (
                           <button
                             onClick={() => handleDownload(submission.file_path)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Download file"
                           >
                             <FaFileAlt />
-                            <span>Download</span>
                           </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-3 text-xs text-gray-600">
                         {formatDate(submission.submitted_at)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-2 py-3 whitespace-nowrap">
                         {submission.rubric_score ? (
                           <div className="flex items-center gap-1">
-                            <FaStar className="text-yellow-500" />
-                            <span className="font-semibold">
+                            <FaStar className="text-yellow-500 text-xs" />
+                            <span className="font-semibold text-sm">
                               {submission.rubric_score}/5
                             </span>
                           </div>
@@ -418,15 +415,14 @@ const SubmissionsPage = () => {
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleViewSubmission(submission.id)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                            className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                             title="View submission"
                           >
                             <FaEye />
-                            <span>View</span>
                           </button>
                           {!submission.rubric_score &&
                             (submission.status === "submitted" ||
@@ -435,11 +431,10 @@ const SubmissionsPage = () => {
                                 onClick={() =>
                                   handleScoreSubmission(submission.id)
                                 }
-                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                                className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
                                 title="Score submission"
                               >
                                 <FaStar />
-                                <span>Score</span>
                               </button>
                             )}
                         </div>

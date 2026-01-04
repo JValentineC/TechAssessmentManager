@@ -7,8 +7,203 @@ const TaskRenderer = ({ task, value, onChange, readOnly = false }) => {
       : task.task_config
     : {};
 
+  // Helper function to render individual components within composite tasks
+  const renderComponent = (component, componentValue, onComponentChange) => {
+    switch (component.type) {
+      case "text_input":
+        return (
+          <input
+            type="text"
+            value={componentValue || ""}
+            onChange={(e) => onComponentChange(e.target.value)}
+            placeholder={component.placeholder || ""}
+            disabled={readOnly}
+            required={component.required}
+            minLength={component.minLength}
+            maxLength={component.maxLength}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-icstars-blue"
+          />
+        );
+
+      case "text_area":
+        return (
+          <textarea
+            value={componentValue || ""}
+            onChange={(e) => onComponentChange(e.target.value)}
+            placeholder={component.placeholder || ""}
+            disabled={readOnly}
+            required={component.required}
+            rows={component.rows || 4}
+            minLength={component.minLength}
+            maxLength={component.maxLength}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-icstars-blue resize-y"
+          />
+        );
+
+      case "code_block":
+        return (
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-800 text-white p-2 text-sm flex items-center justify-between">
+              <span>{component.language || "code"}</span>
+              {component.readOnly && (
+                <span className="text-xs bg-gray-700 px-2 py-1 rounded">
+                  Read Only
+                </span>
+              )}
+            </div>
+            <textarea
+              value={componentValue || component.templateCode || ""}
+              onChange={(e) => onComponentChange(e.target.value)}
+              readOnly={readOnly || component.readOnly}
+              className="w-full p-4 font-mono text-sm bg-gray-900 text-green-400 border-0 focus:ring-2 focus:ring-icstars-blue"
+              rows={component.rows || 12}
+              spellCheck={false}
+              style={{ resize: "vertical" }}
+            />
+          </div>
+        );
+
+      case "multiple_choice":
+        return (
+          <div className="space-y-2">
+            {component.options?.map((option, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center p-3 border rounded-lg cursor-pointer transition ${
+                  componentValue === option.value
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                <input
+                  type="radio"
+                  value={option.value}
+                  checked={componentValue === option.value}
+                  onChange={(e) => onComponentChange(e.target.value)}
+                  disabled={readOnly}
+                  className="mr-3"
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case "checkbox":
+        const selections = componentValue || [];
+        return (
+          <div className="space-y-2">
+            {component.options?.map((option, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center p-3 border rounded-lg cursor-pointer transition ${
+                  selections.includes(option.value)
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  value={option.value}
+                  checked={selections.includes(option.value)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      onComponentChange([...selections, option.value]);
+                    } else {
+                      onComponentChange(
+                        selections.filter((v) => v !== option.value)
+                      );
+                    }
+                  }}
+                  disabled={readOnly}
+                  className="mr-3"
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case "number_input":
+        return (
+          <input
+            type="number"
+            value={componentValue || ""}
+            onChange={(e) => onComponentChange(e.target.value)}
+            placeholder={component.placeholder || ""}
+            disabled={readOnly}
+            required={component.required}
+            min={component.min}
+            max={component.max}
+            step={component.step}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-icstars-blue"
+          />
+        );
+
+      case "divider":
+        return <hr className="my-4 border-gray-300" />;
+
+      case "info_text":
+        return (
+          <div
+            className={`p-4 rounded-lg ${
+              component.style === "warning"
+                ? "bg-yellow-50 border border-yellow-200 text-yellow-800"
+                : component.style === "success"
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-blue-50 border border-blue-200 text-blue-800"
+            }`}
+          >
+            <p className="text-sm">{component.text}</p>
+          </div>
+        );
+
+      default:
+        return (
+          <p className="text-gray-500 text-sm">
+            Unknown component type: {component.type}
+          </p>
+        );
+    }
+  };
+
   const renderTaskByType = () => {
     switch (task.task_type) {
+      case "composite":
+        // Multi-component task - allows combining multiple input types
+        const compositeValue = value || {};
+        return (
+          <div className="space-y-6">
+            {config.components?.map((component, index) => (
+              <div key={index} className="space-y-2">
+                {component.label && (
+                  <label className="block text-sm font-medium text-gray-700">
+                    {component.label}
+                    {component.required && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
+                  </label>
+                )}
+                {component.description && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    {component.description}
+                  </p>
+                )}
+                {renderComponent(
+                  component,
+                  compositeValue[`component_${index}`],
+                  (newVal) => {
+                    onChange({
+                      ...compositeValue,
+                      [`component_${index}`]: newVal,
+                    });
+                  }
+                )}
+              </div>
+            ))}
+          </div>
+        );
+
       case "single_input":
         return (
           <div className="space-y-2">
@@ -64,45 +259,8 @@ const TaskRenderer = ({ task, value, onChange, readOnly = false }) => {
         );
 
       case "file_upload":
-        return (
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-icstars-blue transition">
-              <input
-                type="file"
-                onChange={(e) => onChange(e.target.files[0])}
-                accept={config.acceptedTypes?.join(",")}
-                multiple={config.multiple}
-                disabled={readOnly}
-                className="hidden"
-                id={`file-upload-${task.id}`}
-              />
-              <label
-                htmlFor={`file-upload-${task.id}`}
-                className="cursor-pointer"
-              >
-                <div className="text-4xl mb-2">📁</div>
-                <p className="text-lg font-medium text-gray-700">
-                  {config.instructions || "Click to upload or drag and drop"}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Accepted: {config.acceptedTypes?.join(", ") || "Any file"}
-                </p>
-                {config.maxFileSize && (
-                  <p className="text-sm text-gray-500">
-                    Max size: {(config.maxFileSize / 1048576).toFixed(0)}MB
-                  </p>
-                )}
-              </label>
-            </div>
-            {value && (
-              <div className="bg-green-50 border border-green-200 rounded p-3">
-                <p className="text-green-800">
-                  ✓ File uploaded: {value.name || value}
-                </p>
-              </div>
-            )}
-          </div>
-        );
+        // File upload is handled by the FileUpload component in AssessmentRunnerPage
+        return null;
 
       case "code_editor":
         // Simplified code editor (without external dependencies)

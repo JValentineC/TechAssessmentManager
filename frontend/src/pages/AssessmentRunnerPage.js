@@ -299,137 +299,300 @@ const AssessmentRunnerPage = () => {
           </div>
         </div>
 
-        {/* Task Content */}
-        <div className="card mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            {currentTask?.title}
-          </h2>
-
-          <div className="prose max-w-none mb-6">
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>
+              Task {currentTaskIndex + 1} of {tasks.length}
+            </span>
+            <span>
+              {Math.round(
+                (Object.values(submissions).filter(
+                  (s) => s.status === "submitted"
+                ).length /
+                  tasks.length) *
+                  100
+              )}
+              % Complete
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
             <div
-              className="text-gray-700 whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: currentTask?.instructions }}
-            />
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500"
+              style={{
+                width: `${
+                  (Object.values(submissions).filter(
+                    (s) => s.status === "submitted"
+                  ).length /
+                    tasks.length) *
+                  100
+                }%`,
+              }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Task Content */}
+        <div className="card mb-6 overflow-hidden">
+          {/* Task Header */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              {currentTask?.title}
+            </h2>
+            <div className="flex items-center space-x-4 text-sm">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {currentTask?.max_points} Points
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                {currentTask?.task_type
+                  ?.replace(/_/g, " ")
+                  .replace(/\b\w/g, (l) => l.toUpperCase())}
+              </span>
+            </div>
           </div>
 
-          {currentTask?.template_url && (
-            <div className="mb-6">
-              <a
-                href={currentTask.template_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary inline-block"
-              >
-                Download Template
-              </a>
+          {/* Task Instructions */}
+          <div className="p-6">
+            <div className="prose max-w-none mb-6">
+              <div
+                className="text-gray-700 leading-relaxed space-y-4"
+                dangerouslySetInnerHTML={{
+                  __html: currentTask?.instructions
+                    ?.replace(/\n\n/g, '</p><p class="mt-4">')
+                    ?.replace(
+                      /Instructions:/gi,
+                      '<h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">📋 Instructions</h3>'
+                    )
+                    ?.replace(
+                      /What to Submit:/gi,
+                      '<h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">📤 What to Submit</h3>'
+                    )
+                    ?.replace(
+                      /Proficient Performance:/gi,
+                      '<h3 class="text-lg font-semibold text-gray-800 mt-6 mb-3">⭐ Proficient Performance</h3>'
+                    )
+                    ?.replace(/- /g, '<li class="ml-4">'),
+                }}
+              />
             </div>
-          )}
 
-          {/* Task Submission Area */}
-          {currentTask?.max_points > 0 && (
-            <div>
-              {currentSubmission?.status === "submitted" ? (
-                <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 text-center mb-4">
-                  <div className="text-green-600 text-5xl mb-2">✓</div>
-                  <h4 className="text-xl font-bold text-green-800 mb-2">
-                    Task Submitted Successfully!
-                  </h4>
-                  {currentSubmission.file && (
-                    <p className="text-green-700 mb-4">
-                      File: {currentSubmission.file}
-                    </p>
-                  )}
-                  {currentSubmission.submission_text && (
-                    <p className="text-green-700 mb-4 text-sm">Answer saved</p>
-                  )}
-                  <p className="text-sm text-gray-600">
-                    You can resubmit to replace your submission, or move to the
-                    next task.
-                  </p>
-                </div>
-              ) : null}
-
-              {/* Dynamic Task Renderer */}
-              <div className="mb-4">
-                <TaskRenderer
-                  task={currentTask}
-                  value={
-                    taskAnswers[currentTask.id] ||
-                    currentSubmission?.submission_text ||
-                    ""
-                  }
-                  onChange={(newValue) => {
-                    setTaskAnswers((prev) => ({
-                      ...prev,
-                      [currentTask.id]: newValue,
-                    }));
-                  }}
-                  readOnly={false}
-                />
-              </div>
-
-              {/* Submit Button */}
-              {currentTask.task_type !== "file_upload" &&
-                currentTask.task_type !== "drag_drop_upload" && (
-                  <button
-                    onClick={() => handleTaskSubmit(currentTask.id)}
-                    className="btn-primary"
-                    disabled={!taskAnswers[currentTask.id]}
+            {currentTask?.template_url && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">📎</span>
+                    <div>
+                      <p className="font-medium text-gray-800">
+                        Template Available
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Download the starter template for this task
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={currentTask.template_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary inline-flex items-center"
                   >
-                    Submit Answer
-                  </button>
-                )}
+                    <span>Download</span>
+                    <svg
+                      className="w-4 h-4 ml-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            )}
 
-              {/* File upload types handle their own submission via handleFileUpload */}
-              {(currentTask.task_type === "file_upload" ||
-                currentTask.task_type === "drag_drop_upload") && (
-                <FileUpload
-                  key={currentTask.id}
-                  taskId={currentTask.id}
-                  onUpload={handleFileUpload}
-                  disabled={currentSubmission?.status === "submitted"}
-                  acceptedTypes={[
-                    ".txt",
-                    ".sql",
-                    ".md",
-                    ".pdf",
-                    ".png",
-                    ".jpg",
-                    ".jpeg",
-                    ".zip",
-                    ".doc",
-                    ".docx",
-                  ]}
-                  maxSizeMB={10}
-                />
-              )}
-            </div>
-          )}
+            {/* Task Submission Area */}
+            {currentTask?.max_points > 0 && (
+              <div className="border-t border-gray-200 pt-6">
+                {currentSubmission?.status === "submitted" ? (
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-xl p-8 text-center mb-6 animate-fadeIn">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 text-white rounded-full text-3xl mb-4">
+                      ✓
+                    </div>
+                    <h4 className="text-2xl font-bold text-green-800 mb-3">
+                      Task Submitted Successfully!
+                    </h4>
+                    {currentSubmission.file && (
+                      <div className="inline-flex items-center px-4 py-2 bg-white border border-green-200 rounded-lg mb-3">
+                        <svg
+                          className="w-5 h-5 text-green-600 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                          />
+                        </svg>
+                        <span className="text-green-700 font-medium">
+                          {currentSubmission.file}
+                        </span>
+                      </div>
+                    )}
+                    {currentSubmission.submission_text && (
+                      <p className="text-green-700 mb-4">✓ Answer saved</p>
+                    )}
+                    <p className="text-sm text-gray-600 mt-4">
+                      You can resubmit to replace your submission, or move to
+                      the next task.
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* Dynamic Task Renderer */}
+                <div className="mb-4">
+                  <TaskRenderer
+                    task={currentTask}
+                    value={
+                      taskAnswers[currentTask.id] ||
+                      currentSubmission?.submission_text ||
+                      ""
+                    }
+                    onChange={(newValue) => {
+                      setTaskAnswers((prev) => ({
+                        ...prev,
+                        [currentTask.id]: newValue,
+                      }));
+                    }}
+                    readOnly={false}
+                  />
+                </div>
+
+                {/* Submit Button */}
+                {currentTask.task_type !== "file_upload" &&
+                  currentTask.task_type !== "drag_drop_upload" && (
+                    <button
+                      onClick={() => handleTaskSubmit(currentTask.id)}
+                      className="btn-primary"
+                      disabled={!taskAnswers[currentTask.id]}
+                    >
+                      Submit Answer
+                    </button>
+                  )}
+
+                {/* File upload types handle their own submission via handleFileUpload */}
+                {(currentTask.task_type === "file_upload" ||
+                  currentTask.task_type === "drag_drop_upload") && (
+                  <FileUpload
+                    key={currentTask.id}
+                    taskId={currentTask.id}
+                    onUpload={handleFileUpload}
+                    disabled={currentSubmission?.status === "submitted"}
+                    acceptedTypes={[
+                      ".txt",
+                      ".sql",
+                      ".md",
+                      ".pdf",
+                      ".png",
+                      ".jpg",
+                      ".jpeg",
+                      ".zip",
+                      ".doc",
+                      ".docx",
+                    ]}
+                    maxSizeMB={10}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
-        <div className="flex justify-between items-center">
-          <button
-            onClick={handlePreviousTask}
-            disabled={currentTaskIndex === 0}
-            className="btn-secondary disabled:opacity-50"
-          >
-            Previous Task
-          </button>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={handlePreviousTask}
+              disabled={currentTaskIndex === 0}
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Previous Task
+            </button>
 
-          <div className="text-sm text-gray-600">
-            {
-              Object.values(submissions).filter((s) => s.status === "submitted")
-                .length
-            }{" "}
-            of {tasks.length} tasks submitted
+            <div className="text-center">
+              <div className="text-sm text-gray-500 mb-1">Progress</div>
+              <div className="text-2xl font-bold text-gray-800">
+                {
+                  Object.values(submissions).filter(
+                    (s) => s.status === "submitted"
+                  ).length
+                }
+                <span className="text-gray-400 text-lg"> / {tasks.length}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">tasks completed</div>
+            </div>
+
+            <button
+              onClick={handleNextTask}
+              className="btn-primary inline-flex items-center"
+            >
+              {currentTaskIndex === tasks.length - 1 ? (
+                <>
+                  Finish & Reflect
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  Next Task
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </>
+              )}
+            </button>
           </div>
-
-          <button onClick={handleNextTask} className="btn-primary">
-            {currentTaskIndex === tasks.length - 1
-              ? "Finish & Reflect"
-              : "Next Task"}
-          </button>
         </div>
       </div>
     </div>

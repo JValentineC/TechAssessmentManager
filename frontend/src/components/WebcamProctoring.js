@@ -5,9 +5,10 @@ import { FaCamera } from "react-icons/fa";
 const WebcamProctoring = ({ assessmentId }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null); // Use ref instead of state to avoid re-renders
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState(null);
+  const [isActive, setIsActive] = useState(false); // Track if webcam is active
   const timeoutRef = useRef(null); // Track the snapshot timeout
 
   useEffect(() => {
@@ -21,11 +22,12 @@ const WebcamProctoring = ({ assessmentId }) => {
       }
 
       // Stop all media tracks
-      if (stream) {
-        stream.getTracks().forEach((track) => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
           track.stop();
           console.log("🔴 Stopped webcam track:", track.label);
         });
+        streamRef.current = null;
       }
 
       // Clear video source
@@ -33,7 +35,7 @@ const WebcamProctoring = ({ assessmentId }) => {
         videoRef.current.srcObject = null;
       }
     };
-  }, [stream]); // Add stream as dependency so cleanup always has latest reference
+  }, []); // Run only once on mount
 
   const initializeWebcam = async () => {
     try {
@@ -49,11 +51,13 @@ const WebcamProctoring = ({ assessmentId }) => {
         videoRef.current.srcObject = mediaStream;
       }
 
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
+      setIsActive(true);
       setError(null);
     } catch (err) {
       console.error("Webcam error:", err);
       setError("Unable to access webcam. Please check permissions.");
+      setIsActive(false);
     }
   };
 
@@ -79,7 +83,7 @@ const WebcamProctoring = ({ assessmentId }) => {
   };
 
   const captureSnapshot = async () => {
-    if (!videoRef.current || !canvasRef.current || !stream) {
+    if (!videoRef.current || !canvasRef.current || !streamRef.current) {
       return;
     }
 
@@ -120,7 +124,7 @@ const WebcamProctoring = ({ assessmentId }) => {
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Proctoring indicator */}
-      {stream && !error && (
+      {isActive && !error && (
         <div className="proctoring-active">
           <FaCamera className={capturing ? "text-white" : "text-red-200"} />
           <span className="text-sm font-medium">

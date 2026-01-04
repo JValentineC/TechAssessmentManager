@@ -668,7 +668,7 @@ class SubmissionController {
         }
 
         $maxSize = $_ENV['MAX_FILE_SIZE'] ?? 10485760; // 10MB
-        $allowedTypes = ['txt', 'sql', 'md', 'pdf', 'png', 'jpg', 'jpeg'];
+        $allowedTypes = ['txt', 'sql', 'md', 'pdf', 'png', 'jpg', 'jpeg', 'zip', 'doc', 'docx'];
 
         if ($file['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('File upload error');

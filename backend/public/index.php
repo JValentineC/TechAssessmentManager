@@ -1,9 +1,18 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../config/Database.php';
+// Determine the base path - prefer local files in production
+$basePath = __DIR__;  // Default: /home/public/api/
+
+// Check if we're in development (backend/public/)
+if (!file_exists($basePath . '/vendor/autoload.php') && file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    $basePath = __DIR__ . '/..';  // Dev: backend/public/../
+}
+
+require_once $basePath . '/vendor/autoload.php';
+require_once $basePath . '/config/Database.php';
 
 // Load environment variables from .env file
+// Always load .env from protected directory for security
 function loadEnv($path) {
     if (!file_exists($path)) {
         return;
@@ -26,7 +35,11 @@ function loadEnv($path) {
     }
 }
 
-loadEnv(__DIR__ . '/../.env');
+// Always load .env from protected directory, not from public API directory
+$envPath = file_exists('/home/protected/backend/.env') 
+    ? '/home/protected/backend/.env' 
+    : $basePath . '/.env';
+loadEnv($envPath);
 
 // CORS headers
 $allowedOrigins = [
@@ -150,7 +163,7 @@ foreach ($routes as $route) {
         array_shift($matches); // Remove full match
         
         list($controller, $action) = explode('@', $handler);
-        $controllerFile = __DIR__ . "/../controllers/{$controller}.php";
+        $controllerFile = $basePath . "/controllers/{$controller}.php";
         
         if (!file_exists($controllerFile)) {
             http_response_code(500);

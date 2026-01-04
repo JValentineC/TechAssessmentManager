@@ -20,7 +20,9 @@ export const CohortProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await api.get('/cohorts');
-      const cohortList = response.data;
+      
+      // Ensure response.data is an array
+      const cohortList = Array.isArray(response.data) ? response.data : [];
       setCohorts(cohortList);
 
       // Auto-select cohort
@@ -44,6 +46,7 @@ export const CohortProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to load cohorts:', error);
+      setCohorts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

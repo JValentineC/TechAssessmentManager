@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useCohort } from "../context/CohortContext";
-import { windowService, overrideService, assessmentService } from "../services";
+import {
+  windowService,
+  overrideService,
+  assessmentService,
+  userService,
+} from "../services";
 import CohortSelector from "../components/CohortSelector";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { FaLock, FaUnlock, FaEye, FaEyeSlash, FaPlus } from "react-icons/fa";
+import {
+  FaLock,
+  FaUnlock,
+  FaEye,
+  FaEyeSlash,
+  FaPlus,
+  FaTimes,
+  FaUserClock,
+} from "react-icons/fa";
 
 const AccessControlPage = () => {
   const { selectedCohort } = useCohort();
@@ -105,9 +118,62 @@ const AssessmentWindowCard = ({
   onToggleLock,
   onUpdateSchedule,
 }) => {
+  const { selectedCohort } = useCohort();
   const [opens, setOpens] = useState(new Date(window.opens_at));
   const [closes, setCloses] = useState(new Date(window.closes_at));
   const [editing, setEditing] = useState(false);
+  const [overrides, setOverrides] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+
+  useEffect(() => {
+    if (selectedCohort) {
+      loadOverrides();
+      loadUsers();
+    }
+  }, [selectedCohort, window.assessment_id]);
+
+  const loadOverrides = async () => {
+    try {
+      setLoadingOverrides(true);
+      const data = await overrideService.getOverrides(
+        selectedCohort.id,
+        window.assessment_id
+      );
+      setOverrides(data);
+    } catch (error) {
+      console.error("Failed to load overrides:", error);
+    } finally {
+      setLoadingOverrides(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await userService.getAll();
+      // Filter to only show interns in the selected cohort
+      const cohortUsers = data.filter(
+        (user) =>
+          user.role === "intern" && user.current_cohort_id == selectedCohort.id
+      );
+      setUsers(cohortUsers);
+    } catch (error) {
+      console.error("Failed to load users:", error);
+    }
+  };
+
+  const handleDeleteOverride = async (overrideId) => {
+    if (!window.confirm("Are you sure you want to delete this exception?")) {
+      return;
+    }
+    try {
+      await overrideService.deleteOverride(overrideId);
+      await loadOverrides();
+    } catch (error) {
+      alert("Failed to delete exception");
+    }
+  };
 
   const handleSaveSchedule = () => {
     onUpdateSchedule(
@@ -221,6 +287,292 @@ const AssessmentWindowCard = ({
             Edit Schedule
           </button>
         )}
+      </div>
+
+      {/* Overrides Section */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+            <FaUserClock className="mr-2" />
+            Individual Exceptions ({overrides.length})
+          </h3>
+          <button
+            onClick={() => setShowOverrideModal(true)}
+            className="btn-primary text-sm"
+          >
+            <FaPlus className="mr-2" />
+            Add Exception
+          </button>
+        </div>
+
+        {loadingOverrides ? (
+          <div className="text-center py-4">
+            <div className="spinner spinner-sm"></div>
+          </div>
+        ) : overrides.length === 0 ? (
+          <p className="text-gray-500 text-sm">
+            No exceptions set for this assessment. Use exceptions to grant
+            makeup exams or block specific users.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {overrides.map((override) => (
+              <div
+                key={override.id}
+                className="flex justify-between items-start p-3 bg-gray-50 rounded-lg"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium text-gray-900">
+                      {override.user_name}
+                    </span>
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        override.override_type === "allow"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {override.override_type === "allow" ? "Allow" : "Deny"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {override.user_email}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <strong>Window:</strong>{" "}
+                    {new Date(override.starts_at).toLocaleString()} →{" "}
+                    {new Date(override.ends_at).toLocaleString()}
+                  </p>
+                  {override.reason && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      <strong>Reason:</strong> {override.reason}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDeleteOverride(override.id)}
+                  className="btn-danger text-sm ml-4"
+                  title="Delete exception"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Override Modal */}
+      {showOverrideModal && (
+        <OverrideModal
+          assessmentId={window.assessment_id}
+          assessmentName={`${window.code} - ${window.title}`}
+          cohortId={selectedCohort.id}
+          users={users}
+          onClose={() => setShowOverrideModal(false)}
+          onSave={loadOverrides}
+        />
+      )}
+    </div>
+  );
+};
+
+const OverrideModal = ({
+  assessmentId,
+  assessmentName,
+  cohortId,
+  users,
+  onClose,
+  onSave,
+}) => {
+  const [formData, setFormData] = useState({
+    user_id: "",
+    override_type: "allow",
+    starts_at: new Date(),
+    ends_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // Default to 24 hours from now
+    reason: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.user_id) {
+      alert("Please select a user");
+      return;
+    }
+
+    if (formData.ends_at <= formData.starts_at) {
+      alert("End time must be after start time");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await overrideService.createOverride({
+        user_id: formData.user_id,
+        assessment_id: assessmentId,
+        cohort_id: cohortId,
+        override_type: formData.override_type,
+        starts_at: formData.starts_at
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " "),
+        ends_at: formData.ends_at.toISOString().slice(0, 19).replace("T", " "),
+        reason: formData.reason || null,
+      });
+      onSave();
+      onClose();
+    } catch (error) {
+      alert(
+        "Failed to create exception: " + (error.message || "Unknown error")
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Add Individual Exception
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FaTimes size={24} />
+            </button>
+          </div>
+
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-sm text-blue-800">
+              <strong>Assessment:</strong> {assessmentName}
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              Create an exception to grant a makeup exam window or deny access
+              for a specific user.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* User Selection */}
+            <div>
+              <label className="label">Select Intern *</label>
+              <select
+                className="input"
+                value={formData.user_id}
+                onChange={(e) =>
+                  setFormData({ ...formData, user_id: e.target.value })
+                }
+                required
+              >
+                <option value="">-- Choose an intern --</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Override Type */}
+            <div>
+              <label className="label">Exception Type *</label>
+              <select
+                className="input"
+                value={formData.override_type}
+                onChange={(e) =>
+                  setFormData({ ...formData, override_type: e.target.value })
+                }
+                required
+              >
+                <option value="allow">
+                  Allow - Grant Access (Makeup Exam)
+                </option>
+                <option value="deny">Deny - Block Access</option>
+              </select>
+              <p className="text-sm text-gray-600 mt-1">
+                {formData.override_type === "allow"
+                  ? "User will be able to access this assessment during the specified time window."
+                  : "User will be blocked from accessing this assessment during the specified time window."}
+              </p>
+            </div>
+
+            {/* Time Window */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Starts At *</label>
+                <DatePicker
+                  selected={formData.starts_at}
+                  onChange={(date) =>
+                    setFormData({ ...formData, starts_at: date })
+                  }
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="MMMM d, yyyy h:mm aa"
+                  className="input"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Ends At *</label>
+                <DatePicker
+                  selected={formData.ends_at}
+                  onChange={(date) =>
+                    setFormData({ ...formData, ends_at: date })
+                  }
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="MMMM d, yyyy h:mm aa"
+                  className="input"
+                  minDate={formData.starts_at}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="label">Reason (Optional)</label>
+              <textarea
+                className="input"
+                rows="3"
+                placeholder="e.g., Makeup exam - absent on original date"
+                value={formData.reason}
+                onChange={(e) =>
+                  setFormData({ ...formData, reason: e.target.value })
+                }
+                maxLength={300}
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                {formData.reason.length}/300 characters
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" disabled={saving}>
+                {saving ? "Creating..." : "Create Exception"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
