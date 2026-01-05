@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { FaLock, FaUser } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { FaLock, FaUser } from "react-icons/fa";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // NEW
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -23,20 +25,19 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     const result = await login(email, password);
 
     if (result.success) {
-      // Redirect based on role
-      if (result.user.role === 'intern') {
-        navigate('/assessments');
+      if (result.user.role === "intern") {
+        navigate("/assessments");
       } else {
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     } else {
-      setError(result.error || 'Invalid email or password');
+      setError(result.error || "Invalid email or password");
       setLoading(false);
     }
   };
@@ -91,19 +92,33 @@ const LoginPage = () => {
                 Password
               </label>
               <div className="relative">
+                {/* Left icon */}
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FaLock className="text-gray-400" />
                 </div>
+
+                {/* Input */}
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input pl-10"
+                  className="input pl-10 pr-12"
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
                 />
+
+                {/* Toggle button (right) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-icstars-blue focus:ring-offset-2 rounded"
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
             </div>
 
@@ -119,7 +134,7 @@ const LoginPage = () => {
                   <span>Signing in...</span>
                 </span>
               ) : (
-                'Sign In'
+                "Sign In"
               )}
             </button>
           </form>
@@ -127,9 +142,9 @@ const LoginPage = () => {
           {/* Help Text */}
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>
-              Need help?{' '}
+              Need help?{" "}
               <a
-                href="mailto:support@icstars.org"
+                href="mailto:jramirez@icstars.org"
                 className="text-icstars-blue hover:underline"
               >
                 Contact Support
@@ -137,8 +152,6 @@ const LoginPage = () => {
             </p>
           </div>
         </div>
-
-        {/* Demo Credentials (Remove in production) */}
         <div className="mt-6 text-center text-sm text-white bg-blue-900 bg-opacity-50 rounded-lg p-4">
           <p className="font-semibold mb-2">Demo Credentials:</p>
           <p>Admin: admin@icstars.org / Admin@2026!</p>
