@@ -249,6 +249,11 @@ export const scoreService = {
     const response = await api.get(`/scores/summary?cohort_id=${cohortId}`);
     return response.data;
   },
+
+  getReports: async (cohortId) => {
+    const response = await api.get(`/scores/reports?cohort_id=${cohortId}`);
+    return response.data;
+  },
 };
 
 export const snapshotService = {

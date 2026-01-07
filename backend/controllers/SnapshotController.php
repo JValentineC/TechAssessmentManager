@@ -2,16 +2,19 @@
 
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
-class SnapshotController {
+class SnapshotController
+{
     private $db;
     private $auth;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->db = Database::getInstance()->getConnection();
         $this->auth = new AuthMiddleware();
     }
 
-    public function create() {
+    public function create()
+    {
         $user = $this->auth->requireRole(['intern']);
 
         if (!isset($_FILES['image'])) {
@@ -45,9 +48,10 @@ class SnapshotController {
         }
     }
 
-    public function index() {
+    public function index()
+    {
         $this->auth->requireRole(['admin', 'facilitator']);
-        
+
         $cohortId = $_GET['cohort_id'] ?? null;
         $assessmentId = $_GET['assessment_id'] ?? null;
 
@@ -57,7 +61,7 @@ class SnapshotController {
                 FROM snapshots s
                 JOIN users u ON s.user_id = u.id
                 JOIN assessments a ON s.assessment_id = a.id
-                WHERE 1=1
+                WHERE u.deleted_at IS NULL
             ";
             $params = [];
 
@@ -84,9 +88,10 @@ class SnapshotController {
         }
     }
 
-    private function saveSnapshot($file, $userId, $assessmentId): string {
+    private function saveSnapshot($file, $userId, $assessmentId): string
+    {
         $snapshotDir = __DIR__ . '/../' . ($_ENV['SNAPSHOT_DIR'] ?? 'snapshots');
-        
+
         if (!is_dir($snapshotDir)) {
             mkdir($snapshotDir, 0755, true);
         }
@@ -97,7 +102,7 @@ class SnapshotController {
 
         $filename = $userId . '_' . $assessmentId . '_' . time() . '.jpg';
         $destination = $snapshotDir . '/' . $filename;
-        
+
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception('Failed to save snapshot');
         }

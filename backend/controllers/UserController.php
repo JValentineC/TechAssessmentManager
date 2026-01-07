@@ -2,16 +2,19 @@
 
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
-class UserController {
+class UserController
+{
     private $db;
     private $auth;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->db = Database::getInstance()->getConnection();
         $this->auth = new AuthMiddleware();
     }
 
-    public function index() {
+    public function index()
+    {
         $this->auth->requireRole(['admin', 'facilitator']);
 
         try {
@@ -25,7 +28,7 @@ class UserController {
             $offset = ($page - 1) * $limit;
 
             // Build query
-            $where = [];
+            $where = ['deleted_at IS NULL']; // Filter out soft-deleted users
             $params = [];
 
             if ($role) {
@@ -86,7 +89,8 @@ class UserController {
         }
     }
 
-    public function create() {
+    public function create()
+    {
         $this->auth->requireRole(['admin']);
         $currentUser = $this->auth->requireAuth();
         $input = json_decode(file_get_contents('php://input'), true);
@@ -205,7 +209,8 @@ class UserController {
         }
     }
 
-    private function generateTempPassword() {
+    private function generateTempPassword()
+    {
         $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
         $password = '';
         for ($i = 0; $i < 12; $i++) {
@@ -214,7 +219,8 @@ class UserController {
         return $password;
     }
 
-    public function update($id) {
+    public function update($id)
+    {
         $this->auth->requireRole(['admin']);
         $currentUser = $this->auth->requireAuth();
         $input = json_decode(file_get_contents('php://input'), true);
@@ -298,6 +304,37 @@ class UserController {
             echo json_encode(['success' => true, 'data' => $user]);
         } catch (Exception $e) {
             $this->db->rollBack();
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function delete($id)
+    {
+        $this->auth->requireRole(['admin']);
+
+        try {
+            // Get user info before soft deletion
+            $stmt = $this->db->prepare("SELECT name, email FROM users WHERE id = ? AND deleted_at IS NULL");
+            $stmt->execute([$id]);
+            $user = $stmt->fetch();
+
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'User not found or already deleted']);
+                return;
+            }
+
+            // Soft delete: mark the user as deleted instead of actually deleting
+            // This preserves all historical assessment data, submissions, and scores
+            $stmt = $this->db->prepare("UPDATE users SET deleted_at = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "User {$user['name']} ({$user['email']}) archived successfully. All historical data preserved."
+            ]);
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }

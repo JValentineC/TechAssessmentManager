@@ -13,7 +13,8 @@ require_once $basePath . '/config/Database.php';
 
 // Load environment variables from .env file
 // Always load .env from protected directory for security
-function loadEnv($path) {
+function loadEnv($path)
+{
     if (!file_exists($path)) {
         return;
     }
@@ -36,8 +37,8 @@ function loadEnv($path) {
 }
 
 // Always load .env from protected directory, not from public API directory
-$envPath = file_exists('/home/protected/backend/.env') 
-    ? '/home/protected/backend/.env' 
+$envPath = file_exists('/home/protected/backend/.env')
+    ? '/home/protected/backend/.env'
     : $basePath . '/.env';
 loadEnv($envPath);
 
@@ -69,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 header('Content-Type: application/json');
 
 // Error handling
-set_error_handler(function($errno, $errstr, $errfile, $errline) {
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
 });
 
@@ -110,7 +111,7 @@ $routes = [
     ['POST', 'assessments', 'AssessmentController@create'],
     ['PATCH', 'assessments/(\d+)', 'AssessmentController@update'],
     ['DELETE', 'assessments/(\d+)', 'AssessmentController@delete'],
-    
+
     // Task routes
     ['GET', 'tasks', 'TaskController@index'],
     ['POST', 'tasks', 'TaskController@create'],
@@ -136,13 +137,14 @@ $routes = [
     ['GET', 'submissions/(\d+)', 'SubmissionController@show'],
     ['PATCH', 'submissions/(\d+)', 'SubmissionController@update'],
     ['POST', 'submissions/(\d+)/timeout', 'SubmissionController@timeout'],
-    
+
     // File download route
     ['GET', 'uploads/(.+)', 'SubmissionController@downloadFile'],
 
     // Score routes
     ['POST', 'scores', 'ScoreController@create'],
     ['GET', 'scores/summary', 'ScoreController@summary'],
+    ['GET', 'scores/reports', 'ScoreController@reports'],
 
     // Snapshot routes
     ['POST', 'snapshots', 'SnapshotController@create'],
@@ -160,7 +162,7 @@ $routes = [
 $matched = false;
 foreach ($routes as $route) {
     list($method, $pattern, $handler) = $route;
-    
+
     if ($method !== $requestMethod) {
         continue;
     }
@@ -168,10 +170,10 @@ foreach ($routes as $route) {
     $regex = '#^' . $pattern . '$#';
     if (preg_match($regex, $path, $matches)) {
         array_shift($matches); // Remove full match
-        
+
         list($controller, $action) = explode('@', $handler);
         $controllerFile = $basePath . "/controllers/{$controller}.php";
-        
+
         if (!file_exists($controllerFile)) {
             http_response_code(500);
             echo json_encode(['error' => 'Controller not found']);
@@ -179,10 +181,10 @@ foreach ($routes as $route) {
         }
 
         require_once $controllerFile;
-        
+
         $controllerInstance = new $controller();
         call_user_func_array([$controllerInstance, $action], $matches);
-        
+
         $matched = true;
         break;
     }

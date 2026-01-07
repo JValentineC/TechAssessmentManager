@@ -1,0 +1,75 @@
+jvc@assessment.db [AssessmentManager]> -- Check cohort structure and cycle_number column
+SCRIjvc@assessment.db [AssessmentManager]> DESCRIBE cohorts;
++--------------+--------------------------------------+------+-----+---------------------+-------------------------------+
+| Field        | Type                                 | Null | Key | Default             | Extra                   
+      |
++--------------+--------------------------------------+------+-----+---------------------+-------------------------------+
+| id           | int(10) unsigned                     | NO   | PRI | NULL                | auto_increment          
+      |
+| cycle_number | int(10) unsigned                     | NO   | UNI | NULL                |                         
+      |
+| name         | varchar(150)                         | NO   |     | NULL                |                         
+      |
+| start_date   | date                                 | YES  |     | NULL                |                         
+      |
+| end_date     | date                                 | YES  |     | NULL                |                         
+      |
+| status       | enum('active','archived','upcoming') | NO   | MUL | active              |                         
+      |
+| created_at   | datetime                             | NO   |     | current_timestamp() |                         
+      |
+| updated_at   | datetime                             | YES  |     | NULL                | on update current_timestamp() |
++--------------+--------------------------------------+------+-----+---------------------+-------------------------
+
+jvc@assessment.db [AssessmentManager]> -- Check if any cohort has cycle_number = 58
+jvc@assessment.db [AssessmentManager]> SELECT * FROM cohorts;
++----+--------------+---------+------------+------------+----------+---------------------+---------------------+   
+| id | cycle_number | name    | start_date | end_date   | status   | created_at          | updated_at          |   
++----+--------------+---------+------------+------------+----------+---------------------+---------------------+   
+|  1 |           59 | Cycle A | 2026-01-12 | 2026-04-17 | active   | 2026-01-02 18:06:13 | 2026-01-04 01:25:39 |   
+|  2 |           58 | Cycle C | 2025-08-01 | 2025-12-18 | archived | 2026-01-02 18:06:13 | 2026-01-04 01:26:19 |   
+|  3 |           60 | Cycle B | 2026-05-11 | 2026-08-14 | upcoming | 2026-01-02 18:06:13 | 2026-01-04 01:25:28 |   
+|  7 |           61 | Cycle C | 2026-09-07 | 2026-12-11 | upcoming | 2026-01-04 01:27:22 | NULL                |   
++----+--------------+---------+------------+------------+----------+---------------------+---------------------+  
+
+jvc@assessment.db [AssessmentManager]> SELECT id, name, email, current_cohort_id FROM users LIMIT 10;
++----+----------------------+----------------------------+-------------------+
+| id | name                 | email                      | current_cohort_id |
++----+----------------------+----------------------------+-------------------+
+|  1 | System Administrator | admin@icstars.org          |                 1 |
+|  2 | Lead Facilitator     | facilitator@icstars.org    |                 1 |
+|  3 | John Doe             | intern@icstars.org         |                 1 |
+|  4 | viktoriia            | friend@icstars.org         |              NULL |
+|  5 | Brandon Pryor        | brandonpryor1994@gmail.com |              NULL |
+|  6 | Oksana Cromley       | oksanal@mail.com           |              NULL |
+|  7 | Malik Rogers         | malikaki6416@gmail.com     |              NULL |
+|  8 | Adrian T Sneed       | asneed316@gmail.com        |              NULL |
+|  9 | Leonardo Puente      | leo.puente@live.com        |              NULL |
+| 10 | Avory Banks          | emailavory@gmail.com       |              NULL |
++----+----------------------+----------------------------+-------------------+
+
+jvc@assessment.db [AssessmentManager]> SELECT id, assessment_id, title, max_points, order_index FROM tasks WHERE assessment_id IN (1,2,3,4) ORDER BY assessment_id, order_index;
++----+---------------+------------------------------+------------+-------------+
+| id | assessment_id | title                        | max_points | order_index |
++----+---------------+------------------------------+------------+-------------+
+| 72 |             1 | testing                      |          5 |           0 |
+| 54 |             1 | Shared Doc Collaboration     |          5 |           1 |
+| 55 |             1 | IDE & Git Setup Verification |          5 |           2 |
+| 56 |             1 | Cybersecurity Checklist      |          5 |           3 |
+| 57 |             1 | Reflection                   |          0 |           4 |
+| 58 |             2 | Agile Backlog Refinement     |          5 |           1 |
+| 59 |             2 | SDLC Diagram                 |          5 |           2 |
+| 60 |             2 | Test Plan + Defect Log       |          5 |           3 |
+| 61 |             2 | Reflection                   |          0 |           4 |
+| 62 |             3 | Write a Function             |          5 |           1 |
+| 63 |             3 | SQL JOIN Query               |          5 |           2 |
+| 64 |             3 | API Call Simulation          |          5 |           3 |
+| 65 |             3 | Risk Register                |          5 |           4 |
+| 66 |             3 | Reflection                   |          0 |           5 |
+| 67 |             4 | Data Pipeline Build          |          5 |           1 |
+| 68 |             4 | ERD + Schema Design          |          5 |           2 |
+| 69 |             4 | AI Evaluation Task           |          5 |           3 |
+| 70 |             4 | Release Plan                 |          5 |           4 |
+| 71 |             4 | Reflection                   |          0 |           5 |
++----+---------------+------------------------------+------------+-------------+
+

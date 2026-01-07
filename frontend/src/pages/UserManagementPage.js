@@ -315,7 +315,9 @@ const UserManagementPage = () => {
                   )}{" "}
                   of {pagination.total} results
                 </div>
-                <div className="flex gap-2">
+
+                {/* Page Number Buttons */}
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() =>
                       setPagination((prev) => ({
@@ -324,10 +326,54 @@ const UserManagementPage = () => {
                       }))
                     }
                     disabled={pagination.page === 1}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm px-3"
                   >
-                    Previous
+                    ‹
                   </button>
+
+                  {/* Page Number Buttons */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: pagination.pages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        // Show first page, last page, current page, and 2 pages around current
+                        return (
+                          page === 1 ||
+                          page === pagination.pages ||
+                          Math.abs(page - pagination.page) <= 1
+                        );
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis if there's a gap
+                        const prevPage = array[index - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsis && (
+                              <span className="px-2 py-1 text-sm text-gray-500">
+                                ...
+                              </span>
+                            )}
+                            <button
+                              onClick={() =>
+                                setPagination((prev) => ({
+                                  ...prev,
+                                  page: page,
+                                }))
+                              }
+                              className={`btn btn-sm w-10 h-10 p-0 ${
+                                pagination.page === page
+                                  ? "btn-primary"
+                                  : "btn-secondary"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
                   <button
                     onClick={() =>
                       setPagination((prev) => ({
@@ -336,9 +382,9 @@ const UserManagementPage = () => {
                       }))
                     }
                     disabled={pagination.page >= pagination.pages}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm px-3"
                   >
-                    Next
+                    ›
                   </button>
                 </div>
               </div>
